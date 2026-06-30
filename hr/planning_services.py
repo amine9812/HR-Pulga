@@ -98,6 +98,7 @@ def serialize_employee(employee):
 
 
 def serialize_shift(shift):
+    pointage = shift.pointages.order_by("-date", "-heure_entree").first() if shift.pk else None
     return {
         "id": shift.pk,
         "title": shift.titre,
@@ -122,6 +123,64 @@ def serialize_shift(shift):
         "status": shift.statut,
         "status_label": shift.get_statut_display(),
         "notes": shift.notes,
+        "pointage_status": pointage.get_statut_display() if pointage else "Aucun pointage lie",
+        "pointage_hours": float(pointage.total_heures or 0) if pointage else 0,
+        "pointage_comment": pointage.commentaire if pointage else "No planned attendance record has been completed for this shift.",
+    }
+
+
+def shift_occurs_on(shift, day):
+    if shift.plan_type == "normal":
+        return bool(shift.date_fin and shift.date_debut.date() <= day <= shift.date_fin.date())
+    if not shift.date_debut or shift.date_debut.date() > day:
+        return False
+    if shift.date_fin and shift.date_fin.date() < day:
+        return False
+    delta_days = (day - shift.date_debut.date()).days
+    if shift.recurrence_rule == "daily":
+        return True
+    if shift.recurrence_rule == "weekdays":
+        return day.weekday() < 5
+    if shift.recurrence_rule == "weekly":
+        return shift.date_debut.weekday() == day.weekday()
+    if shift.recurrence_rule == "biweekly":
+        return shift.date_debut.weekday() == day.weekday() and delta_days % 14 == 0
+    if shift.recurrence_rule == "monthly":
+        return shift.date_debut.day == day.day
+    return False
+
+
+def pointage_breakdown(pointage):
+    shift = pointage.shift
+    planned_start = planned_end = None
+    expected_hours = 0
+    warning = ""
+    if shift:
+        planned_start = timezone.make_aware(timezone.datetime.combine(pointage.date, timezone.localtime(shift.date_debut).time()))
+        end_time = shift.effective_end_time
+        if end_time:
+            planned_end = timezone.make_aware(timezone.datetime.combine(pointage.date, end_time))
+            if planned_end <= planned_start:
+                planned_end += timezone.timedelta(days=1)
+            expected_hours = max(0, round((planned_end - planned_start).total_seconds() / 3600 - (shift.pause_minutes / 60), 2))
+    else:
+        warning = "No planned shift found for this date."
+    late_minutes = max(0, int((pointage.heure_entree - planned_start).total_seconds() / 60)) if pointage.heure_entree and planned_start else 0
+    early_minutes = max(0, int((planned_end - pointage.heure_sortie).total_seconds() / 60)) if pointage.heure_sortie and planned_end else 0
+    worked_hours = float(pointage.total_heures or 0)
+    missing_hours = max(0, round(expected_hours - worked_hours, 2)) if shift else 0
+    overtime_hours = max(0, round(worked_hours - expected_hours, 2)) if shift else 0
+    return {
+        "pointage": pointage,
+        "planned_start": planned_start,
+        "planned_end": planned_end,
+        "expected_hours": expected_hours,
+        "worked_hours": worked_hours,
+        "missing_hours": missing_hours,
+        "overtime_hours": overtime_hours,
+        "late_minutes": late_minutes,
+        "early_minutes": early_minutes,
+        "warning": warning,
     }
 
 
@@ -337,10 +396,11 @@ def conflict_list(user_profile, start_date=None, end_date=None):
             ).exclude(pk=shift.pk).exclude(statut="annule")
         if overlaps.exists():
             conflicts.append({"shift": serialize_shift(shift), "type": "overlap", "message": "Chevauchement avec un autre shift."})
+        leave_check_end = shift.date_fin.date() if shift.date_fin else (end_date or shift.date_debut.date())
         leave = DemandeConge.objects.filter(
             employe=shift.employe,
             statut=StatutDemande.VALIDEE,
-            date_debut__lte=shift.date_fin.date(),
+            date_debut__lte=leave_check_end,
             date_fin__gte=shift.date_debut.date(),
         )
         if leave.exists():

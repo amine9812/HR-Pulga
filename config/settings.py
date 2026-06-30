@@ -84,5 +84,15 @@ LOGOUT_REDIRECT_URL = "login"
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 
+def env_int(name, default):
+    try:
+        return int(os.environ.get(name, default))
+    except (TypeError, ValueError):
+        return default
+
+
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
+GEMINI_TIMEOUT_MS = env_int("GEMINI_TIMEOUT_MS", 20000)
+RAG_MAX_CONTEXT_ITEMS = env_int("RAG_MAX_CONTEXT_ITEMS", 8)
+RAG_MAX_CONTEXT_TOKENS = env_int("RAG_MAX_CONTEXT_TOKENS", 6500)
 GEMINI_API_CONFIGURED = bool(os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY"))

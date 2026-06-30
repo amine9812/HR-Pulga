@@ -87,11 +87,13 @@ from .planning_services import (
     grid_context,
     move_shift,
     parse_day,
+    pointage_breakdown,
     planning_queryset_for_profile,
     planning_summary,
     resize_shift,
     serialize_employee,
     serialize_shift,
+    shift_occurs_on,
     update_shift as update_planning_shift,
 )
 from .services import (
@@ -953,6 +955,7 @@ def attendance_view(request):
     planned_today = PlanningShift.objects.filter(Q(date_debut__date__lte=today, date_fin__date__gte=today) | Q(plan_type="permanent", date_debut__date__lte=today)).exclude(statut="annule")
     if user_profile.role not in {Role.ADMIN, Role.RESPONSABLE_RH}:
         planned_today = planned_today.filter(employe__in=accessible_employees(user_profile))
+    pointage_details = [pointage_breakdown(item) for item in pointages[:80]]
     return render(
         request,
         "pointage/index.html",
@@ -966,6 +969,7 @@ def attendance_view(request):
             "today_open_count": today_pointages.filter(heure_sortie__isnull=True).count(),
             "today_total_hours": total_hours_today,
             "planned_today_count": planned_today.count(),
+            "pointage_details": pointage_details,
             "compte": ComptePoints.objects.get_or_create(employe=user_profile.employe)[0],
         },
     )
@@ -1067,7 +1071,7 @@ def planning(request):
     user_profile = profile(request)
     today = timezone.localdate()
     week_start = today - timezone.timedelta(days=today.weekday())
-    allowed_tabs = {"overview", "calendar", "daily", "weekly", "biweekly", "monthly", "timesheets", "shifts", "attendance", "leave", "tasks", "reports", "settings"}
+    allowed_tabs = {"overview", "calendar", "daily", "weekly", "biweekly", "monthly", "timesheets", "shifts", "attendance", "leave", "tasks", "approvals", "reports", "settings"}
     active_tab = request.GET.get("tab")
     if not active_tab:
         return redirect(f"{reverse('planning')}?tab=overview")
@@ -1149,17 +1153,7 @@ def planning(request):
                 "cells": [
                     {
                         "day": day,
-                        "shifts": [
-                            shift
-                            for shift in employee_shifts
-                            if (
-                                shift.plan_type == "permanent"
-                                and shift.date_debut.date() <= day
-                                and (shift.recurrence_rule != "weekdays" or day.weekday() < 5)
-                                and (shift.recurrence_rule != "weekly" or shift.date_debut.weekday() == day.weekday())
-                            )
-                            or (shift.date_fin and shift.date_debut.date() <= day <= shift.date_fin.date())
-                        ],
+                        "shifts": [shift for shift in employee_shifts if shift_occurs_on(shift, day)],
                     }
                     for day in days
                 ],
@@ -1176,6 +1170,8 @@ def planning(request):
     attendance_summary = {
         "records": pointages.count(),
         "late": pointages.filter(statut="retard").count(),
+        "early": pointages.filter(statut="sortie_anticipee").count(),
+        "absent": pointages.filter(statut="absent").count(),
         "open": pointages.filter(heure_sortie__isnull=True).count(),
         "hours": round(sum(float(pointage.total_heures or 0) for pointage in pointages), 2),
     }
@@ -1189,6 +1185,31 @@ def planning(request):
     }
     weekly_limit = 44
     hour_warnings = [{"employee": row["employee"], "hours": row["total_hours"]} for row in grid_rows if row["total_hours"] >= weekly_limit]
+    agenda_days = [{"day": day, "shifts": [shift for shift in shift_list if shift_occurs_on(shift, day)]} for day in days]
+    month_leading = []
+    month_cursor = start_date - timezone.timedelta(days=start_date.weekday())
+    month_end = end_date + timezone.timedelta(days=6 - end_date.weekday())
+    while month_cursor <= month_end:
+        month_leading.append({"day": month_cursor, "in_range": start_date <= month_cursor <= end_date, "shifts": [shift for shift in shift_list if shift_occurs_on(shift, month_cursor)]})
+        month_cursor += timezone.timedelta(days=1)
+    monthly_weeks = [month_leading[index : index + 7] for index in range(0, len(month_leading), 7)]
+    pointage_details = [pointage_breakdown(item) for item in pointages.order_by("-date", "employe__nom")[:120]]
+    report_summary = {
+        "planned_hours": summary["planned_hours"],
+        "actual_hours": attendance_summary["hours"],
+        "missing_hours": round(sum(item["missing_hours"] for item in pointage_details), 2),
+        "late_arrivals": attendance_summary["late"],
+        "early_departures": attendance_summary["early"],
+        "absences": attendance_summary["absent"],
+        "by_employee": [{"name": row["employee"].nom_complet, "hours": row["total_hours"]} for row in grid_rows if row["total_hours"]][:8],
+        "by_department": [],
+    }
+    department_hours = {}
+    for shift in shift_list:
+        department = shift.departement or (shift.employe.departement if shift.employe else None)
+        key = department.libelle if department else "Sans departement"
+        department_hours[key] = department_hours.get(key, 0) + float(shift.duree_heures or 0)
+    report_summary["by_department"] = [{"name": name, "hours": round(hours, 2)} for name, hours in sorted(department_hours.items())[:8]]
     return render(
         request,
         "planning/index.html",
@@ -1199,12 +1220,16 @@ def planning(request):
             "planning_groups": planning_board(shift_list),
             "grid_days": days,
             "grid_rows": grid_rows,
+            "agenda_days": agenda_days,
+            "monthly_weeks": monthly_weeks,
             "open_shifts": open_shifts,
             "summary": summary,
+            "report_summary": report_summary,
             "attendance_summary": attendance_summary,
             "leave_summary": leave_summary,
             "task_summary": task_summary,
             "pointages": pointages.order_by("-date", "employe__nom")[:120],
+            "pointage_details": pointage_details,
             "leaves": leaves.order_by("date_debut")[:120],
             "planning_tasks": tasks.order_by("date_limite")[:120],
             "hour_warnings": hour_warnings,

@@ -626,6 +626,7 @@ class PlanningBulkForm(forms.Form):
         date_debut = cleaned.get("date_debut")
         date_fin = cleaned.get("date_fin")
         plan_type = cleaned.get("plan_type") or "normal"
+        recurrence_rule = cleaned.get("recurrence_rule") or "none"
         pause_debut = cleaned.get("pause_debut")
         pause_minutes = cleaned.get("pause_minutes") or 0
         if date_debut and plan_type != "permanent" and date_debut < timezone.now():
@@ -634,8 +635,10 @@ class PlanningBulkForm(forms.Form):
             self.add_error("date_fin", "La fin est obligatoire pour un planning normal.")
         if plan_type == "permanent" and not (date_fin or cleaned.get("permanent_end_time")):
             self.add_error("permanent_end_time", "Indiquez l'heure de fin standard du plan permanent.")
+        if plan_type == "normal" and recurrence_rule != "none":
+            self.add_error("recurrence_rule", "La recurrence est disponible pour les plans permanents. Creez des shifts normaux separes pour une recurrence operationnelle.")
         if date_debut and date_fin and date_fin <= date_debut:
-            self.add_error("date_fin", "La fin doit etre apres le debut.")
+            self.add_error("date_fin", "Overnight shifts are not supported yet. Please create two separate shifts or choose a valid same-day time range.")
         if date_debut and date_fin and pause_minutes:
             duration_minutes = (date_fin - date_debut).total_seconds() / 60
             if pause_minutes >= duration_minutes:

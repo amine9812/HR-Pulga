@@ -1,16 +1,22 @@
 from datetime import timedelta
 
+import json
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import Count, Q, Sum
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import escape
 from django.utils.safestring import mark_safe
+from django.views.decorators.csrf import csrf_exempt
 
 from accounts.models import AccountCreationRequest, AdminSetting, Role, UtilisateurProfile
+from .ai_assistant import assistant_response
 from hr.models import (
     Actualite,
     AffectationFormation,
@@ -782,3 +788,24 @@ def admin_settings_save(request):
         HistoriqueAction.objects.create(action="ADMIN_SETTING_UPDATE", details=f"company_email_domain={domain or 'non defini'}", utilisateur=request.user.profile, entite_concernee="AdminSetting")
         messages.success(request, "Parametres enregistres.")
     return redirect(f"{reverse('admin_dashboard')}?tab=settings")
+
+
+@csrf_exempt
+def chatbot_api(request):
+    if request.method != "POST":
+        return JsonResponse({"ok": False, "message": "Method not allowed."}, status=405)
+    if not request.user.is_authenticated:
+        return JsonResponse({"ok": False, "error": "session_expired", "message": "Your session has expired. Please log in again."}, status=401)
+    try:
+        payload = json.loads(request.body.decode("utf-8") or "{}")
+        result = assistant_response(request.user, payload.get("message", ""))
+        return JsonResponse({"ok": True, "data": result})
+    except json.JSONDecodeError:
+        return JsonResponse({"ok": False, "message": "Invalid JSON payload."}, status=400)
+    except PermissionDenied as exc:
+        return JsonResponse({"ok": False, "message": str(exc)}, status=403)
+    except ValidationError as exc:
+        message = " ".join(exc.messages) if hasattr(exc, "messages") else str(exc)
+        return JsonResponse({"ok": False, "message": message}, status=400)
+    except Exception:
+        return JsonResponse({"ok": False, "message": "I could not reach the assistant service right now. Please try again."}, status=500)

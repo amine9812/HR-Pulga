@@ -76,22 +76,25 @@
     <div class="table-responsive">
         <table class="table table-compact align-middle">
             <thead>
-                <tr><th>Employe</th><th>Date</th><th>Shift</th><th>Entree</th><th>Sortie</th><th>Heures</th><th>Statut</th><th>Points</th></tr>
+                <tr><th>Employe</th><th>Date</th><th>Shift</th><th>Planned</th><th>Actual</th><th>Heures</th><th>Variance</th><th>Statut</th><th>Points</th></tr>
             </thead>
             <tbody>
-                {% for p in pointages %}
+                {% for detail in pointage_details %}
+                    {% with p=detail.pointage %}
                     <tr>
                         <td>{{ p.employe.nom_complet }}</td>
                         <td>{{ p.date }}</td>
                         <td>{{ p.shift.titre|default:"Non planifie" }}</td>
-                        <td>{{ p.heure_entree|date:"H:i" }}</td>
-                        <td>{{ p.heure_sortie|date:"H:i"|default:"-" }}</td>
+                        <td>{% if detail.planned_start %}{{ detail.planned_start|date:"H:i" }} - {{ detail.planned_end|date:"H:i" }}{% else %}<span class="text-warning">No planned shift found for this date.</span>{% endif %}</td>
+                        <td>{{ p.heure_entree|date:"H:i" }} - {{ p.heure_sortie|date:"H:i"|default:"-" }}</td>
                         <td>{{ p.total_heures }}</td>
+                        <td>Missing {{ detail.missing_hours }} h / Late {{ detail.late_minutes }} min / Early {{ detail.early_minutes }} min / OT {{ detail.overtime_hours }} h</td>
                         <td><span class="status-badge status-{{ p.statut }}">{{ p.get_statut_display }}</span></td>
                         <td>{{ p.points_calcules }}</td>
                     </tr>
+                    {% endwith %}
                 {% empty %}
-                    <tr><td colspan="8" class="empty-state">Aucun pointage.</td></tr>
+                    <tr><td colspan="9" class="empty-state">Aucun pointage. Les calculs Planning vs Presence apparaitront apres une entree et une sortie.</td></tr>
                 {% endfor %}
             </tbody>
         </table>

@@ -144,9 +144,16 @@ def shift_permanent_for_day(employe, day):
         date_debut__date__lte=day,
     ).order_by("-date_debut")
     for shift in candidates:
+        delta_days = (day - shift.date_debut.date()).days
+        if shift.recurrence_rule == "daily":
+            return shift
         if shift.recurrence_rule == "weekdays" and weekday >= 5:
             continue
         if shift.recurrence_rule == "weekly" and shift.date_debut.weekday() != weekday:
+            continue
+        if shift.recurrence_rule == "biweekly" and (shift.date_debut.weekday() != weekday or delta_days % 14 != 0):
+            continue
+        if shift.recurrence_rule == "monthly" and shift.date_debut.day != day.day:
             continue
         return shift
     return None

@@ -1257,6 +1257,104 @@ class PlanningModuleUpgradeTests(TestCase):
         self.assertIsNone(shift.date_fin)
         self.assertEqual(shift.permanent_end_time, time(17, 0))
 
+    def test_permanent_plan_supports_biweekly_and_monthly_recurrence_display(self):
+        self.client.login(username="planning-rh", password="rh123")
+        start = self.future_at(days=14, hour=9)
+        biweekly = PlanningShift.objects.create(
+            titre="Cadence support quinzaine",
+            employe=self.emp,
+            departement=self.dep,
+            service=self.service,
+            date_debut=start,
+            plan_type="permanent",
+            recurrence_rule="biweekly",
+            permanent_end_time=time(17, 0),
+            statut="publie",
+        )
+        monthly = PlanningShift.objects.create(
+            titre="Revue mensuelle operations",
+            employe=self.peer,
+            departement=self.dep,
+            service=self.service,
+            date_debut=start,
+            plan_type="permanent",
+            recurrence_rule="monthly",
+            permanent_end_time=time(12, 0),
+            statut="publie",
+        )
+
+        response = self.client.get(reverse("planning"), {"tab": "monthly", "date_debut": start.date().isoformat(), "date_fin": (start + timedelta(days=31)).date().isoformat()})
+
+        self.assertContains(response, biweekly.titre)
+        self.assertContains(response, monthly.titre)
+        self.assertContains(response, "planning-month-grid")
+
+    def test_normal_recurring_shift_is_rejected_with_clear_message(self):
+        self.client.login(username="planning-rh", password="rh123")
+        start = self.future_at()
+        response = self.post_json(
+            "planning_api_shifts",
+            {
+                "title": "Recurrence normale invalide",
+                "employee_id": self.emp.pk,
+                "starts_at": start.isoformat(),
+                "ends_at": (start + timedelta(hours=8)).isoformat(),
+                "recurrence_rule": "weekly",
+                "status": "publie",
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(response.json()["ok"])
+        self.assertIn("plans permanents", json.dumps(response.json()))
+
+    def test_overnight_shift_is_rejected_professionally(self):
+        self.client.login(username="planning-rh", password="rh123")
+        start = self.future_at(hour=22)
+        response = self.post_json(
+            "planning_api_shifts",
+            {
+                "title": "Nuit non supportee",
+                "employee_id": self.emp.pk,
+                "starts_at": start.isoformat(),
+                "ends_at": (start - timedelta(hours=2)).isoformat(),
+                "status": "publie",
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Overnight shifts are not supported yet", json.dumps(response.json()))
+
+    def test_planning_reports_approvals_and_detail_modal_states(self):
+        self.client.login(username="planning-rh", password="rh123")
+        reports = self.client.get(reverse("planning"), {"tab": "reports"})
+        self.assertContains(reports, "PDF export is not configured yet.")
+        self.assertContains(reports, "Shifts by employee")
+
+        approvals = self.client.get(reverse("planning"), {"tab": "approvals"})
+        self.assertContains(approvals, "No planning approvals are configured yet.")
+
+        calendar = self.client.get(reverse("planning"), {"tab": "calendar"})
+        self.assertContains(calendar, 'id="planningDetailModal"')
+        self.assertContains(calendar, "Color-coded planning agenda")
+
+    def test_pointage_without_planned_shift_has_safe_warning_and_no_missing_hours(self):
+        pointage = Pointage.objects.create(
+            employe=self.emp,
+            date=timezone.localdate(),
+            heure_entree=timezone.now() - timedelta(hours=2),
+            heure_sortie=timezone.now(),
+            total_heures=2,
+            statut="present",
+        )
+
+        from hr.planning_services import pointage_breakdown
+
+        detail = pointage_breakdown(pointage)
+
+        self.assertEqual(detail["missing_hours"], 0)
+        self.assertEqual(detail["warning"], "No planned shift found for this date.")
+
     def test_pointage_checkout_uses_planning_shift_window(self):
         day = timezone.localdate()
         start = timezone.make_aware(timezone.datetime.combine(day, time(9, 0)))

@@ -9,4 +9,5 @@ urlpatterns = [
     path("admin/account-requests/<int:pk>/decision", views.admin_account_request_decision, name="admin_account_request_decision"),
     path("admin/users/<int:pk>/update", views.admin_user_update, name="admin_user_update"),
     path("admin/settings/save", views.admin_settings_save, name="admin_settings_save"),
+    path("assistant/chat", views.chatbot_api, name="chatbot_api"),
 ]

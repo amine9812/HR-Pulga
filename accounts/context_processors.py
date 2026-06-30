@@ -85,7 +85,7 @@ def current_profile(request):
     elif url_name in planning_urls:
         nav_module = "planning"
         active_tab = request.GET.get("tab", "overview")
-        allowed_planning_tabs = {"overview", "calendar", "daily", "weekly", "biweekly", "monthly", "timesheets", "shifts", "attendance", "leave", "tasks", "reports", "settings"}
+        allowed_planning_tabs = {"overview", "calendar", "daily", "weekly", "biweekly", "monthly", "timesheets", "shifts", "attendance", "leave", "tasks", "approvals", "reports", "settings"}
         nav_item = f"planning_{active_tab if active_tab in allowed_planning_tabs else 'overview'}"
     elif url_name in rh_ticket_urls:
         nav_module = "rh_support"

@@ -9,6 +9,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const offcanvas = offcanvasEl && window.bootstrap ? bootstrap.Offcanvas.getOrCreateInstance(offcanvasEl) : null;
     const errorBox = form ? form.querySelector(".planning-form-errors") : null;
     const cancelButton = form ? form.querySelector(".js-cancel-shift") : null;
+    const detailModalEl = document.getElementById("planningDetailModal");
+    const detailModal = detailModalEl && window.bootstrap ? bootstrap.Modal.getOrCreateInstance(detailModalEl) : null;
+    let activeDetailShiftId = null;
 
     function csrfToken() {
         const input = document.querySelector("input[name='csrfmiddlewaretoken']");
@@ -116,6 +119,39 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    function setDetail(name, value) {
+        const node = detailModalEl?.querySelector(`[data-detail="${name}"]`);
+        if (node) node.textContent = value || "--";
+    }
+
+    async function openShiftDetail(id) {
+        if (!detailModalEl || !detailModal || !id) return;
+        activeDetailShiftId = id;
+        setDetail("title", "Loading shift...");
+        try {
+            const payload = await api(`${shiftsUrl}/${id}`, "GET");
+            const shift = payload.data.shift;
+            const starts = shift.starts_at ? new Date(shift.starts_at) : null;
+            const ends = shift.ends_at ? new Date(shift.ends_at) : null;
+            setDetail("title", shift.title);
+            setDetail("type", shift.plan_type_label);
+            setDetail("employee", shift.employee);
+            setDetail("department", `${shift.department || "Sans departement"} / ${shift.service || "Sans service"}`);
+            setDetail("date", starts ? starts.toLocaleDateString() : "--");
+            setDetail("time", `${starts ? starts.toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"}) : "--"} - ${ends ? ends.toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"}) : (shift.effective_end_time || "--")}`);
+            setDetail("duration", `${shift.duration_hours || 0} h`);
+            setDetail("status", shift.status_label);
+            setDetail("recurrence", `${shift.recurrence_label || "Aucune"}${shift.plan_type === "permanent" ? " / permanent" : ""}`);
+            setDetail("pointage", `${shift.pointage_status || "Aucun pointage lie"} - ${shift.pointage_hours || 0} h. ${shift.pointage_comment || ""}`);
+            setDetail("notes", shift.notes || "No notes.");
+            detailModal.show();
+        } catch (error) {
+            setDetail("title", "Unable to load shift");
+            setDetail("notes", error.message || "Failed planning fetch.");
+            detailModal.show();
+        }
+    }
+
     document.querySelectorAll(".js-new-shift").forEach((button) => {
         button.addEventListener("click", () => openNewShift(button.closest(".planning-grid-cell")));
     });
@@ -125,6 +161,29 @@ document.addEventListener("DOMContentLoaded", function () {
             event.stopPropagation();
             openEditShift(button.closest("[data-shift-id]").dataset.shiftId);
         });
+    });
+
+    document.querySelectorAll("[data-shift-id]").forEach((node) => {
+        node.addEventListener("click", (event) => {
+            if (event.target.closest(".shift-inline-actions") || event.target.closest(".js-edit-shift") || event.target.closest(".js-resize-shift")) return;
+            openShiftDetail(node.dataset.shiftId);
+        });
+    });
+
+    detailModalEl?.querySelector(".js-detail-edit")?.addEventListener("click", () => {
+        if (!activeDetailShiftId) return;
+        detailModal?.hide();
+        openEditShift(activeDetailShiftId);
+    });
+
+    detailModalEl?.querySelector(".js-detail-delete")?.addEventListener("click", async () => {
+        if (!activeDetailShiftId || !window.confirm("Annuler ce shift ?")) return;
+        try {
+            await api(`${shiftsUrl}/${activeDetailShiftId}`, "DELETE");
+            window.location.reload();
+        } catch (error) {
+            setDetail("notes", error.message || "Failed delete.");
+        }
     });
 
     if (form) {

@@ -427,6 +427,8 @@ class PlanningShift(models.Model):
         ("weekdays", "Jours ouvrables"),
         ("daily", "Tous les jours"),
         ("weekly", "Hebdomadaire"),
+        ("biweekly", "Toutes les deux semaines"),
+        ("monthly", "Mensuelle"),
     ]
     employe = models.ForeignKey(Employe, on_delete=models.SET_NULL, null=True, blank=True, related_name="shifts")
     departement = models.ForeignKey(Departement, on_delete=models.SET_NULL, null=True, blank=True, related_name="shifts")
@@ -481,8 +483,9 @@ class PlanningShift(models.Model):
             raise ValidationError({"plan_type": "Type de planning invalide."})
         if self.recurrence_rule not in dict(self.RECURRENCE_RULES):
             raise ValidationError({"recurrence_rule": "Regle de recurrence invalide."})
+        if self.plan_type == "normal" and self.recurrence_rule != "none":
+            raise ValidationError({"recurrence_rule": "Les repetitions sont disponibles pour les plans permanents. Creez des shifts separes pour un planning normal recurrent."})
         if self.plan_type == "normal":
-            self.recurrence_rule = "none"
             self.permanent_end_time = None
         if self.plan_type == "permanent" and self.recurrence_rule == "none":
             self.recurrence_rule = "weekdays"
@@ -498,7 +501,7 @@ class PlanningShift(models.Model):
             if effective_end <= self.date_debut:
                 effective_end += timezone.timedelta(days=1)
         if self.date_debut and effective_end and effective_end <= self.date_debut:
-            raise ValidationError({"date_fin": "La fin du shift doit etre apres le debut."})
+            raise ValidationError({"date_fin": "Overnight shifts are not supported yet. Please create two separate shifts or choose a valid same-day time range."})
         if self.date_debut and effective_end and self.pause_minutes:
             shift_minutes = (effective_end - self.date_debut).total_seconds() / 60
             if self.pause_minutes >= shift_minutes:

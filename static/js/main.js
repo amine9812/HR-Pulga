@@ -219,4 +219,172 @@ document.addEventListener("DOMContentLoaded", function () {
         togglePlanningFields();
     }
 
+    const chatWidget = document.querySelector(".ai-chat-widget");
+    if (chatWidget) {
+        const toggle = chatWidget.querySelector(".ai-chat-toggle");
+        const panel = chatWidget.querySelector(".ai-chat-panel");
+        const log = chatWidget.querySelector(".ai-chat-log");
+        const form = chatWidget.querySelector(".ai-chat-form");
+        const input = form?.querySelector("input[name='message']");
+        const submitButton = form?.querySelector("button[type='submit']");
+        const errorBox = chatWidget.querySelector(".ai-chat-error");
+        const suggestions = chatWidget.querySelector(".ai-chat-suggestions");
+        const clearButton = chatWidget.querySelector(".ai-chat-clear");
+        const chatUrl = chatWidget.dataset.chatUrl;
+        const storageKey = "rh.aiChat.session.v1";
+        const requestTimeoutMs = 25000;
+        let pendingRequest = false;
+        let lastMessage = "";
+
+        const csrfToken = function () {
+            const inputToken = form?.querySelector("input[name='csrfmiddlewaretoken']");
+            if (inputToken) return inputToken.value;
+            const match = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/);
+            return match ? decodeURIComponent(match[1]) : "";
+        };
+        const history = function () {
+            try {
+                return JSON.parse(sessionStorage.getItem(storageKey) || "[]");
+            } catch (error) {
+                return [];
+            }
+        };
+        const saveHistory = function () {
+            try {
+                const items = Array.from(log.querySelectorAll(".ai-chat-message")).slice(-24).map(function (node) {
+                    return { role: node.classList.contains("user") ? "user" : "assistant", text: node.dataset.text || node.textContent.trim() };
+                });
+                sessionStorage.setItem(storageKey, JSON.stringify(items));
+            } catch (error) {
+                // Session chat memory is optional; keep the widget usable.
+            }
+        };
+        const addMessage = function (role, text, actions) {
+            const node = document.createElement("div");
+            node.className = `ai-chat-message ${role}`;
+            node.dataset.text = text || "";
+            node.textContent = text || "";
+            if (actions && actions.length) {
+                const actionRow = document.createElement("div");
+                actionRow.className = "ai-chat-actions";
+                actions.forEach(function (action) {
+                    const button = document.createElement("button");
+                    button.type = "button";
+                    button.textContent = action.label || "Open";
+                    button.addEventListener("click", function () {
+                        if (action.url) window.location.href = action.url;
+                    });
+                    actionRow.appendChild(button);
+                });
+                node.appendChild(actionRow);
+            }
+            log.appendChild(node);
+            log.scrollTop = log.scrollHeight;
+            saveHistory();
+            return node;
+        };
+        const setBusy = function (busy) {
+            pendingRequest = busy;
+            if (input) input.disabled = busy;
+            if (submitButton) submitButton.disabled = busy;
+        };
+        const setError = function (message, retryMessage) {
+            if (!errorBox) return;
+            errorBox.hidden = !message;
+            errorBox.textContent = "";
+            if (!message) return;
+            const text = document.createElement("span");
+            text.textContent = message;
+            errorBox.appendChild(text);
+            if (retryMessage) {
+                const retry = document.createElement("button");
+                retry.type = "button";
+                retry.className = "ai-chat-retry";
+                retry.textContent = "Retry";
+                retry.addEventListener("click", function () {
+                    if (!input || !form || pendingRequest) return;
+                    input.value = retryMessage;
+                    form.requestSubmit();
+                });
+                errorBox.appendChild(retry);
+            }
+        };
+        history().forEach(function (item) {
+            addMessage(item.role === "user" ? "user" : "assistant", item.text);
+        });
+        toggle?.addEventListener("click", function () {
+            const isHidden = panel.hidden;
+            panel.hidden = !isHidden;
+            toggle.setAttribute("aria-expanded", String(isHidden));
+            if (isHidden) input?.focus();
+        });
+        clearButton?.addEventListener("click", function () {
+            sessionStorage.removeItem(storageKey);
+            log.innerHTML = "";
+            addMessage("assistant", "Chat cleared. I will only use information available to your account.");
+            setError("");
+        });
+        suggestions?.addEventListener("click", function (event) {
+            const button = event.target.closest("button");
+            if (!button || !input || !form) return;
+            input.value = button.textContent.trim();
+            form.requestSubmit();
+        });
+        form?.addEventListener("submit", async function (event) {
+            event.preventDefault();
+            if (pendingRequest) {
+                return;
+            }
+            const message = (input.value || "").trim();
+            if (!message) {
+                setError("Please enter a message.");
+                return;
+            }
+            setError("");
+            input.value = "";
+            lastMessage = message;
+            setBusy(true);
+            addMessage("user", message);
+            const loading = addMessage("assistant loading", "Assistant is checking your permissions and data...");
+            const controller = new AbortController();
+            const timeoutId = window.setTimeout(function () {
+                controller.abort();
+            }, requestTimeoutMs);
+            try {
+                const response = await fetch(chatUrl, {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json", "X-CSRFToken": csrfToken()},
+                    body: JSON.stringify({message}),
+                    signal: controller.signal,
+                });
+                let payload = {};
+                try {
+                    payload = await response.json();
+                } catch (error) {
+                    payload = {};
+                }
+                loading.remove();
+                window.clearTimeout(timeoutId);
+                if (!response.ok || !payload.ok) {
+                    if (payload.error === "session_expired" || response.status === 401) {
+                        throw new Error(payload.message || "Your session has expired. Please log in again.");
+                    }
+                    throw new Error(payload.message || "I could not reach the assistant service right now. Please try again.");
+                }
+                addMessage("assistant", payload.data.answer, payload.data.actions || []);
+            } catch (error) {
+                loading.remove();
+                window.clearTimeout(timeoutId);
+                const messageText = error.name === "AbortError"
+                    ? "The assistant took too long to respond. Please try again."
+                    : (error.message || "Frontend chat send failed. Please try again.");
+                setError(messageText, lastMessage);
+                addMessage("assistant", "I could not reach the assistant service right now. Please try again.");
+            } finally {
+                setBusy(false);
+                input?.focus();
+            }
+        });
+    }
+
 });
