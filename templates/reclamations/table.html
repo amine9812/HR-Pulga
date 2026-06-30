@@ -1,0 +1,7 @@
+<div class="compact-panel"><table class="table table-compact"><thead><tr><th>Employe</th><th>Type</th><th>Sujet</th><th>Statut</th><th>Reponse RH</th><th>Action RH</th></tr></thead><tbody>
+{% for r in reclamations %}
+    {% if mode == "historique" or mode == "a_traiter" and r.statut == "ouverte" or mode == "en_cours" and r.statut == "en_cours" or mode == "traitees" and r.statut != "ouverte" and r.statut != "en_cours" %}
+    <tr><td>{{ r.employe.nom_complet }}</td><td>{{ r.type_reclamation }}</td><td>{{ r.sujet }}</td><td>{{ r.statut }}</td><td>{{ r.reponse_rh|default:"-" }}</td><td>{% if utilisateur_connecte.role == "ADMIN" or utilisateur_connecte.role == "RESPONSABLE_RH" %}<form method="post" action="{% url 'reclamation_process' r.id %}">{% csrf_token %}<select name="action" class="form-select form-select-sm"><option value="refuser">Refuser la reclamation</option><option value="accepter">Accepter sans compensation</option><option value="points">Accepter avec ajout de points</option><option value="infos">Demander plus d'informations</option><option value="cloturer">Cloturer la reclamation</option></select><input name="points_accordes" class="form-control form-control-sm mt-1" placeholder="Points"><textarea name="reponse_rh" class="form-control form-control-sm mt-1" placeholder="Reponse RH"></textarea><button class="btn btn-sm btn-accent mt-1">Traiter</button></form>{% endif %}</td></tr>
+    {% endif %}
+{% empty %}<tr><td colspan="6" class="empty-state">Aucune reclamation.</td></tr>{% endfor %}
+</tbody></table></div>

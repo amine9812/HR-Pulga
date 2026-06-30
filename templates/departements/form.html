@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<form class="form-panel" method="post" action="{% url 'departement_save' %}">
+    {% csrf_token %}
+    {% if departement %}<input type="hidden" name="id" value="{{ departement.id }}">{% endif %}
+    <h3>{{ page_title }}</h3>
+    {% include "includes/form_fields.html" %}
+    <button class="btn btn-accent">Enregistrer</button>
+</form>
+{% endblock %}

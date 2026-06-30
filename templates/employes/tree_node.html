@@ -1,0 +1,24 @@
+<div class="org-node">
+    <article class="org-card org-card--{{ node.level_class }}" title="{{ node.employee.nom_complet }} - {{ node.employee.poste|default:'Poste non defini' }}">
+        <div class="org-card-accent"></div>
+        {% if node.employee.photo %}
+            <img class="org-avatar-img" src="{{ node.employee.photo.url }}" alt="{{ node.employee.nom_complet }}">
+        {% else %}
+            <div class="org-avatar">{{ node.employee.prenom|first }}{{ node.employee.nom|first }}</div>
+        {% endif %}
+        <div class="org-card-body">
+            <strong class="org-name">{{ node.employee.nom_complet }}</strong>
+            <span class="org-position">{{ node.employee.poste|default:"Poste non defini" }}</span>
+            <span class="org-department">{{ node.employee.departement|default:"Departement non defini" }}</span>
+            <span class="org-meta"><i class="bi bi-geo-alt"></i>{{ node.employee.localisation|default:"Site non defini" }}</span>
+        </div>
+        <span class="org-badge">{{ node.level_label }}</span>
+    </article>
+    {% if node.children %}
+        <div class="org-children">
+            {% for child in node.children %}
+                {% include "employes/tree_node.html" with node=child %}
+            {% endfor %}
+        </div>
+    {% endif %}
+</div>

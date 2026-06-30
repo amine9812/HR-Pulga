@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="admin-request-detail">
+    <div class="panel">
+        <div class="panel-header">
+            <div>
+                <a class="text-soft small" href="{% url 'demandes_list' %}?tab={{ list_tab }}"><i class="bi bi-arrow-left"></i> Retour aux demandes</a>
+                <h3 class="mt-2 mb-1">{{ demande.type_demande }}</h3>
+                <p class="mb-0 text-soft">{{ demande.employe.nom_complet|default:"Employe indisponible" }} · {{ demande.date_creation|date:"d/m/Y H:i" }}</p>
+            </div>
+            <span class="status-badge status-{{ demande.statut }}">{{ demande.get_statut_display }}</span>
+        </div>
+        <div class="request-detail-grid">
+            <section class="request-message">
+                <h4 class="form-section-title">Message de demande</h4>
+                <p>{{ demande.description|linebreaksbr }}</p>
+                <div class="text-soft small">
+                    Demandeur: {{ demande.employe.nom_complet|default:"-" }}<br>
+                    Date de creation: {{ demande.date_creation|date:"d/m/Y H:i" }}<br>
+                    {% if demande.traitee_par %}Traitee par: {{ demande.traitee_par.nom_complet }}<br>{% endif %}
+                    {% if demande.date_traitement %}Dernier traitement: {{ demande.date_traitement|date:"d/m/Y H:i" }}{% endif %}
+                </div>
+            </section>
+            <aside class="request-attachments">
+                <h4 class="form-section-title">Pieces jointes demande</h4>
+                {% for document in request_documents %}
+                    <a class="message-attachment mb-2" href="{% url 'document_download' document.id %}">
+                        <i class="bi bi-paperclip"></i><span>{{ document.nom_original }}</span>
+                    </a>
+                {% empty %}
+                    <div class="empty-state">Aucune piece jointe fournie.</div>
+                {% endfor %}
+            </aside>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">
+            <div><h3>Reponse RH</h3><p class="mb-0 text-soft">Decision, message et documents retour.</p></div>
+        </div>
+        {% if demande.reponse or reply_documents %}
+            <div class="request-reply-box">
+                {% if demande.reponse %}<p>{{ demande.reponse|linebreaksbr }}</p>{% endif %}
+                {% for document in reply_documents %}
+                    <a class="message-attachment mb-2" href="{% url 'document_download' document.id %}">
+                        <i class="bi bi-file-earmark-arrow-down"></i><span>{{ document.nom_original }}</span>
+                    </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">Aucune reponse RH pour le moment.</div>
+        {% endif %}
+
+        {% if utilisateur_connecte.role == "ADMIN" or utilisateur_connecte.role == "RESPONSABLE_RH" %}
+            {% if demande.statut != "VALIDEE" and demande.statut != "REFUSEE" and demande.statut != "CLOTUREE" %}
+                <form method="post" action="{% url 'demande_process' demande.id %}" enctype="multipart/form-data" class="form-panel border-0 shadow-none p-0 mt-3">
+                    {% csrf_token %}
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label" for="statut">Decision</label>
+                            <select class="form-select" id="statut" name="statut">
+                                <option value="EN_COURS" {% if demande.statut == "EN_COURS" %}selected{% endif %}>En cours</option>
+                                <option value="VALIDEE">Valider</option>
+                                <option value="REFUSEE">Refuser</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="reponse">Reponse RH</label>
+                            <textarea class="form-control" id="reponse" name="reponse" rows="5" placeholder="Ecrire une reponse claire pour l'employe...">{{ demande.reponse }}</textarea>
+                        </div>
+                        <div class="col-12 file-field">
+                            <label class="form-label" for="pieces_jointes">Pieces jointes RH</label>
+                            <input class="form-control" id="pieces_jointes" type="file" name="pieces_jointes" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                            <small class="selected-file text-soft">Formats acceptes: PDF, DOC, DOCX, JPG, JPEG, PNG. Taille maximale 5 Mo par fichier.</small>
+                        </div>
+                        <div class="col-12 text-end">
+                            <button class="btn btn-accent"><i class="bi bi-send"></i> Envoyer la reponse</button>
+                        </div>
+                    </div>
+                </form>
+            {% else %}
+                <div class="empty-state mt-3">Cette demande est finalisee. Les reponses existantes restent disponibles en consultation.</div>
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

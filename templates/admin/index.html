@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="admin-workspace">
+    <section class="dashboard-kpi-grid mb-3">
+        <div class="dashboard-kpi-card tone-warning"><span>Demandes comptes</span><strong>{{ stats.pending_accounts|default:0 }}</strong><small>En attente</small><i class="bi bi-person-plus"></i></div>
+        <div class="dashboard-kpi-card tone-success"><span>Utilisateurs actifs</span><strong>{{ stats.active_users|default:0 }}</strong><small>Comptes applicatifs</small><i class="bi bi-people"></i></div>
+        <div class="dashboard-kpi-card tone-danger"><span>Inactifs</span><strong>{{ stats.inactive_users|default:0 }}</strong><small>Desactives / suspendus</small><i class="bi bi-person-x"></i></div>
+        <div class="dashboard-kpi-card tone-primary"><span>Audit events</span><strong>{{ stats.audit_events|default:0 }}</strong><small>Journalisees</small><i class="bi bi-activity"></i></div>
+        <div class="dashboard-kpi-card tone-info"><span>Admins</span><strong>{{ stats.admin_users|default:0 }}</strong><small>Acces complet</small><i class="bi bi-shield-lock"></i></div>
+        <div class="dashboard-kpi-card tone-danger"><span>Security</span><strong>{{ stats.security_alerts|default:0 }}</strong><small>Comptes inactifs</small><i class="bi bi-shield-exclamation"></i></div>
+    </section>
+
+    {% if active_tab == "overview" %}
+        <div class="row g-3">
+            <div class="col-xl-6"><section class="panel"><div class="panel-header"><h3>Demandes recentes</h3></div>{% include "admin/partials/account_requests_table.html" with compact=True %}</section></div>
+            <div class="col-xl-6"><section class="panel"><div class="panel-header"><h3>Actions recentes</h3></div>{% include "admin/partials/audit_table.html" with compact=True %}</section></div>
+        </div>
+    {% elif active_tab == "account_requests" %}
+        <section class="panel"><div class="panel-header"><h3>Demandes de creation de compte</h3></div>{% include "admin/partials/account_requests_table.html" %}</section>
+    {% elif active_tab == "users" %}
+        <section class="panel">
+            <div class="panel-header"><h3>Utilisateurs & roles</h3></div>
+            <div class="table-responsive"><table class="table table-compact align-middle"><thead><tr><th>Utilisateur</th><th>Employe</th><th>Role</th><th>Statut</th><th>Action</th></tr></thead><tbody>
+                {% for user in users %}
+                    <tr>
+                        <td><strong>{{ user.username }}</strong><br><small>{{ user.email|default:"-" }}</small></td>
+                        <td>{{ user.profile.employe.nom_complet|default:"-" }}</td>
+                        <td>
+                            <form method="post" action="{% url 'admin_user_update' user.id %}" class="d-flex gap-2 align-items-center" onsubmit="return confirm('Confirmer la mise a jour utilisateur ?')">
+                                {% csrf_token %}
+                                <select name="role" class="form-select form-select-sm">
+                                    {% for value,label in roles %}<option value="{{ value }}" {% if user.profile.role == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                                </select>
+                        </td>
+                        <td><label class="d-inline-flex gap-1 align-items-center"><input type="checkbox" name="active" {% if user.is_active and user.profile.actif %}checked{% endif %}> Actif</label></td>
+                        <td><button class="btn btn-sm btn-accent">Enregistrer</button></form></td>
+                    </tr>
+                {% empty %}<tr><td colspan="5" class="empty-state">Aucun utilisateur.</td></tr>{% endfor %}
+            </tbody></table></div>
+        </section>
+    {% elif active_tab == "permissions" %}
+        <section class="panel"><div class="panel-header"><h3>Permissions & Access Control</h3></div>
+            <div class="feature-dock">
+                <article class="feature-card"><i class="bi bi-shield-lock"></i><strong>Admin</strong><span>Acces complet, approbations, roles, settings</span></article>
+                <article class="feature-card"><i class="bi bi-briefcase"></i><strong>RH</strong><span>Employes, support RH, planning, demandes</span></article>
+                <article class="feature-card"><i class="bi bi-diagram-3"></i><strong>Manager</strong><span>Equipe directe, validations et suivi</span></article>
+                <article class="feature-card"><i class="bi bi-person"></i><strong>Employe</strong><span>Donnees personnelles, demandes, tickets</span></article>
+            </div>
+        </section>
+    {% elif active_tab == "edit_requests" %}
+        <section class="panel"><div class="panel-header"><h3>Demandes de modification</h3></div><div class="empty-state">Aucune demande de modification critique en attente. Les workflows sensibles actuels journalisent directement leurs actions.</div></section>
+    {% elif active_tab == "audit" %}
+        <section class="panel"><div class="panel-header"><h3>Journaux d'audit</h3></div>{% include "admin/partials/audit_table.html" %}</section>
+    {% elif active_tab == "settings" %}
+        <section class="panel"><div class="panel-header"><h3>System Settings</h3></div>
+            <form method="post" action="{% url 'admin_settings_save' %}" class="row g-3">
+                {% csrf_token %}
+                <div class="col-md-5"><label class="form-label">Domaine email entreprise</label><input name="company_email_domain" class="form-control" value="{{ company_email_domain }}" placeholder="company.com"></div>
+                <div class="col-12"><button class="btn btn-accent">Enregistrer</button></div>
+            </form>
+        </section>
+    {% elif active_tab == "security" %}
+        <section class="panel"><div class="panel-header"><h3>Security</h3></div><div class="empty-state">Aucun journal de tentative echouee dedie n'est configure. Les comptes inactifs sont visibles dans Utilisateurs & roles.</div></section>
+    {% elif active_tab == "notifications" %}
+        <section class="panel"><div class="panel-header"><h3>Notifications & Templates</h3></div><div class="empty-state">Les notifications utilisent les messages systeme existants. Aucun template editable n'est configure.</div></section>
+    {% elif active_tab == "data" %}
+        <section class="panel"><div class="panel-header"><h3>Data Management</h3></div><div class="empty-state">Les donnees sont conservees; aucune purge destructive n'est exposee dans l'application.</div></section>
+    {% else %}
+        <section class="panel"><div class="panel-header"><h3>Reports</h3></div><div class="empty-state">Les rapports administratifs detailles peuvent etre ajoutes sur les journaux existants.</div></section>
+    {% endif %}
+</div>
+{% endblock %}

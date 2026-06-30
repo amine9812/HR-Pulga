@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="panel">
+    <div class="panel-header">
+        <div><h3>Notifications</h3><p class="mb-0">Messages et alertes liees a vos demandes.</p></div>
+        <form method="post" action="{% url 'notifications_read_all' %}">{% csrf_token %}<button class="btn btn-outline-secondary">Tout marquer comme lu</button></form>
+    </div>
+    {% for notification in notifications %}
+        <div class="request-item mb-2">
+            <div><strong>{{ notification.message }}</strong><small>{{ notification.date_envoi }}{% if notification.lien %} · <a href="{{ notification.lien }}">Ouvrir</a>{% endif %}</small></div>
+            {% if notification.lue %}<span class="status-badge status-CLOTUREE">Lue</span>{% else %}<span class="status-badge status-EN_ATTENTE">Non lue</span>{% endif %}
+            {% if not notification.lue %}<form method="post" action="{% url 'notification_read' notification.id %}">{% csrf_token %}<button class="btn btn-sm btn-accent">Lire</button></form>{% endif %}
+        </div>
+    {% empty %}<div class="empty-state">Aucune notification.</div>{% endfor %}
+</div>
+{% endblock %}

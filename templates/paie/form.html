@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<form method="post" class="form-panel">
+    {% csrf_token %}
+    <h3 class="form-section-title">Modifier la remuneration de {{ remuneration.employe.nom_complet }}</h3>
+    {% include "includes/form_fields.html" %}
+    <button class="btn btn-accent">Enregistrer</button>
+    <a href="{% url 'payroll_analytics' %}" class="btn btn-outline-secondary">Annuler</a>
+</form>
+{% endblock %}

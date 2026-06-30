@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<form class="form-panel" method="post" action="{% url 'demande_submit' %}" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="panel-header"><div><h3>Nouvelle demande administrative</h3><p class="mb-0">Votre demande sera transmise au RH.</p></div><button class="btn btn-accent">Soumettre</button></div>
+    {% if form.errors %}<div class="alert alert-danger">{{ form.errors }}</div>{% endif %}
+    <div class="row g-3">
+        <div class="col-12">{{ form.type_demande.label_tag }}{{ form.type_demande }}</div>
+        <div class="col-12">{{ form.description.label_tag }}{{ form.description }}</div>
+        <div class="col-12 file-field"><label class="form-label">Piece jointe</label><input class="form-control" type="file" name="pieceJointe"><small class="selected-file text-soft">Aucun fichier selectionne</small></div>
+    </div>
+</form>
+{% endblock %}

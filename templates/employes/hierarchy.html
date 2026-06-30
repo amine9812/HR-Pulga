@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="org-chart-page">
+    <div class="panel org-chart-shell">
+        <div class="panel-header org-chart-header">
+            <div>
+                <span class="eyebrow">Organigramme</span>
+                <h3>Arbre hierarchique</h3>
+                <p class="text-soft mb-0">Vue dynamique basee sur le responsable direct, le poste, le departement et le rang hierarchique.</p>
+            </div>
+            <div class="org-chart-stats">
+                <strong>{{ tree.visible_count }}</strong>
+                <span>affiches / {{ tree.total_count }} actifs</span>
+            </div>
+        </div>
+
+        <form class="org-chart-toolbar" method="get">
+            <div class="toolbar-field">
+                <i class="bi bi-search"></i>
+                <input name="search" value="{{ search }}" class="form-control" placeholder="Rechercher un employe, poste ou matricule">
+            </div>
+            <select name="departement" class="form-select">
+                <option value="">Tous les departements</option>
+                {% for departement in departements %}
+                    <option value="{{ departement.id }}" {% if departement_filtre == departement.id|stringformat:"s" %}selected{% endif %}>{{ departement.libelle }}</option>
+                {% endfor %}
+            </select>
+            <select name="afficher" class="form-select">
+                <option value="managers" {% if not show_all %}selected{% endif %}>Managers et direction</option>
+                <option value="tous" {% if show_all %}selected{% endif %}>Afficher plus</option>
+            </select>
+            <button class="btn btn-accent"><i class="bi bi-funnel"></i> Filtrer</button>
+            <a href="{% url 'hierarchy_tree' %}" class="btn btn-outline-secondary">Reinitialiser</a>
+        </form>
+
+        <div class="org-legend">
+            <span><i class="legend-dot legend-direction"></i>Direction generale</span>
+            <span><i class="legend-dot legend-directeur"></i>Directeurs</span>
+            <span><i class="legend-dot legend-manager"></i>Managers</span>
+            <span><i class="legend-dot legend-lead"></i>Chefs d'equipe</span>
+        </div>
+
+        <div class="org-chart-container">
+            <div class="org-chart">
+                <div class="org-level">
+                    {% for node in tree.roots %}
+                        {% include "employes/tree_node.html" with node=node %}
+                    {% empty %}
+                        <div class="empty-state">Aucun employe actif ne correspond aux filtres.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

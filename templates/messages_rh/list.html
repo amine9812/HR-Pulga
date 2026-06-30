@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="support-layout">
+    <aside class="support-sidebar panel">
+        <div class="support-toolbar">
+            <form method="get" action="{% url 'rh_messages' %}" class="support-search">
+                <input type="hidden" name="tab" value="{{ active_tab }}">
+                <i class="bi bi-search"></i>
+                <input name="q" value="{{ search_query }}" class="form-control" placeholder="Rechercher un ticket">
+            </form>
+            <a href="{% url 'rh_messages' %}?tab=new" class="btn btn-accent btn-sm"><i class="bi bi-plus-lg"></i> Nouveau</a>
+        </div>
+        <div class="support-filter-row">
+            <a href="{% url 'rh_messages' %}?tab=available" class="support-filter {% if active_tab == 'available' %}active{% endif %}">Non traites <span>{{ available_tickets|length }}</span></a>
+            <a href="{% url 'rh_messages' %}?tab=handled" class="support-filter {% if active_tab == 'handled' %}active{% endif %}">En cours <span>{{ handled_tickets|length }}</span></a>
+            <a href="{% url 'rh_messages' %}?tab=closed" class="support-filter {% if active_tab == 'closed' %}active{% endif %}">Historique <span>{{ closed_tickets|length }}</span></a>
+        </div>
+
+        <div class="support-ticket-list">
+            {% if active_tab == "closed" %}
+                {% for ticket in closed_tickets %}
+                    {% include "messages_rh/ticket_preview.html" with ticket=ticket %}
+                {% empty %}
+                    <div class="empty-state">Aucun ticket RH cloture.</div>
+                {% endfor %}
+            {% elif active_tab == "new" %}
+                <div class="empty-state text-start">Creez un ticket RH avec un sujet clair, une categorie et les pieces utiles.</div>
+            {% elif active_tab == "handled" %}
+                {% for ticket in handled_tickets %}
+                    {% include "messages_rh/ticket_preview.html" with ticket=ticket %}
+                {% empty %}
+                    <div class="empty-state">Aucun ticket RH en cours.</div>
+                {% endfor %}
+            {% elif active_tab == "ranking" or active_tab == "rewards" %}
+                <div class="empty-state text-start">Classement mensuel calcule a partir des notes de tickets clotures.</div>
+            {% else %}
+                {% for ticket in available_tickets %}
+                    {% include "messages_rh/ticket_preview.html" with ticket=ticket %}
+                {% empty %}
+                    <div class="empty-state">Aucun ticket RH non traite.</div>
+                {% endfor %}
+            {% endif %}
+        </div>
+    </aside>
+
+    <section class="support-main panel">
+        {% if active_tab == "new" %}
+            <div class="support-panel-header">
+                <div>
+                    <h3>Nouveau ticket RH</h3>
+                    <p>Expliquez votre demande afin que l'equipe RH puisse la traiter rapidement.</p>
+                </div>
+            </div>
+            <form method="post" action="{% url 'rh_conversation_create' %}" class="support-form support-js-form" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="row g-3">
+                    {% if form.employe.is_hidden %}{{ form.employe }}{% else %}<div class="col-md-6">{{ form.employe.label_tag }}{{ form.employe }}</div>{% endif %}
+                    <div class="col-md-6">{{ form.sujet.label_tag }}{{ form.sujet }}</div>
+                    <div class="col-md-3">{{ form.categorie.label_tag }}{{ form.categorie }}</div>
+                    <div class="col-md-3">{{ form.priorite.label_tag }}{{ form.priorite }}</div>
+                    {% if not form.participants.is_hidden %}<div class="col-md-6">{{ form.participants.label_tag }}{{ form.participants }}</div>{% else %}{{ form.participants }}{% endif %}
+                    <div class="col-12">{{ form.contenu.label_tag }}{{ form.contenu }}</div>
+                    <div class="col-12">{{ form.piece_jointe.label_tag }}{{ form.piece_jointe }}<small class="text-soft d-block mt-1">PDF, DOC, DOCX, JPG, JPEG, PNG. Max 5 Mo.</small><small class="support-file-preview text-soft"></small></div>
+                </div>
+                <div class="form-actions mt-3"><button class="btn btn-accent"><i class="bi bi-send"></i> Creer le ticket</button></div>
+            </form>
+        {% elif active_tab == "ranking" %}
+            <div class="support-panel-header"><div><h3>Classement Support RH</h3><p>Total mensuel des etoiles recues sur les tickets clotures.</p></div>
+                {% if can_manage_rh_tickets %}<form method="post" action="{% url 'rh_support_rewards_generate' %}" class="support-js-form">{% csrf_token %}<button class="btn btn-accent btn-sm"><i class="bi bi-award"></i> Proposer les recompenses</button></form>{% endif %}
+            </div>
+            <div class="support-ranking-list">
+                {% for row in support_ranking %}
+                    <div class="support-ranking-row"><strong>#{{ forloop.counter }} {{ row.responsable_rh__employe__prenom }} {{ row.responsable_rh__employe__nom }}</strong><span>{{ row.total_stars }} etoiles - {{ row.rated_tickets }} ticket(s)</span></div>
+                {% empty %}<div class="empty-state">Aucune note ce mois-ci.</div>{% endfor %}
+            </div>
+        {% elif active_tab == "rewards" %}
+            <div class="support-panel-header"><div><h3>Validations recompenses</h3><p>Les points Support RH attendent une validation manager/admin.</p></div></div>
+            <div class="support-ranking-list">
+                {% for reward in support_rewards %}
+                    <div class="support-ranking-row">
+                        <div><strong>#{{ reward.rang }} {{ reward.employe.nom_complet }}</strong><span>{{ reward.total_etoiles }} etoiles - {{ reward.points }} points - {{ reward.get_statut_display }}</span></div>
+                        {% if can_approve_rewards and reward.statut == "pending" %}
+                            <form method="post" action="{% url 'rh_support_reward_decision' reward.id %}" class="d-flex gap-1 support-js-form">{% csrf_token %}<button name="action" value="approve" class="btn btn-sm btn-success">Approuver</button><button name="action" value="reject" class="btn btn-sm btn-outline-danger">Rejeter</button></form>
+                        {% endif %}
+                    </div>
+                {% empty %}<div class="empty-state">Aucune recompense en attente.</div>{% endfor %}
+            </div>
+        {% elif selected_ticket %}
+            <div class="support-panel-header">
+                <div>
+                    <div class="support-title-row">
+                        <h3>{{ selected_ticket.sujet }}</h3>
+                        <span class="status-badge status-{{ selected_ticket.statut }}">{{ selected_ticket.get_statut_display }}</span>
+                    </div>
+                    <p>{{ selected_ticket.employe.nom_complet|default:"Employe indisponible" }}{% if selected_ticket.employe.service %} - {{ selected_ticket.employe.service.libelle }}{% endif %} - {{ selected_ticket.get_categorie_display }} - {{ selected_ticket.get_priorite_display }} - {% if selected_ticket.responsable_rh %}RH: {{ selected_ticket.responsable_rh.employe.nom_complet|default:selected_ticket.responsable_rh }}{% else %}Non traite{% endif %}</p>
+                </div>
+                {% if can_manage_rh_tickets and not selected_ticket.is_closed and not selected_ticket.responsable_rh %}
+                    <form method="post" action="{% url 'rh_conversation_accept' selected_ticket.id %}" class="support-js-form">{% csrf_token %}<button class="btn btn-accent btn-sm"><i class="bi bi-person-check"></i> Accepter</button></form>
+                {% elif can_handle_selected_ticket and not selected_ticket.is_closed %}
+                    <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#manageTicketModal"><i class="bi bi-sliders"></i> Gerer</button>
+                    <button class="btn btn-outline-danger btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#closeTicketModal"><i class="bi bi-lock"></i> Cloturer</button>
+                {% endif %}
+            </div>
+
+            {% if selected_ticket.is_closed %}
+                <div class="support-closed-banner">
+                    <i class="bi bi-lock"></i>
+                    <div>
+                        <strong>Ticket cloture</strong>
+                        <span>{{ selected_ticket.get_motif_cloture_display|default:"Motif non renseigne" }}{% if selected_ticket.detail_cloture %} - {{ selected_ticket.detail_cloture }}{% endif %}</span>
+                        <small>{% if selected_ticket.cloture_par %}Par {{ selected_ticket.cloture_par }}{% endif %}{% if selected_ticket.date_cloture %} le {{ selected_ticket.date_cloture|date:"d/m/Y H:i" }}{% endif %}</small>
+                    </div>
+                </div>
+            {% endif %}
+
+            <div class="support-thread">
+                {% for message in selected_ticket.messages.all %}
+                    <article class="support-message {% if message.expediteur == utilisateur_connecte %}mine{% else %}theirs{% endif %}">
+                        <div class="support-bubble">
+                            <div class="support-message-meta">
+                                <strong>{{ message.expediteur.employe.nom_complet|default:message.expediteur }}</strong>
+                                <span>{{ message.date_envoi|date:"d/m/Y H:i" }}{% if message.lu %} - lu{% endif %}</span>
+                            </div>
+                            {% if message.contenu %}<p>{{ message.contenu|linebreaksbr }}</p>{% endif %}
+                            {% if message.piece_jointe %}
+                                <a class="message-attachment" href="{% url 'rh_message_attachment' message.pk %}" target="_blank" rel="noopener">
+                                    <i class="bi bi-paperclip"></i>
+                                    <span>{{ message.nom_piece_jointe|default:"Piece jointe" }}</span>
+                                </a>
+                            {% endif %}
+                        </div>
+                    </article>
+                {% empty %}
+                    <div class="empty-state">Aucun message dans ce ticket.</div>
+                {% endfor %}
+            </div>
+
+            {% if selected_ticket.is_closed %}
+                <div class="support-composer disabled"><i class="bi bi-lock"></i> Ce ticket est cloture. Les reponses sont desactivees.</div>
+                {% if can_rate_selected_ticket %}
+                    <form method="post" action="{% url 'rh_conversation_rate' selected_ticket.id %}" class="support-composer support-js-form">{% csrf_token %}
+                        <strong>Evaluer le traitement RH</strong>
+                        <div class="row g-2"><div class="col-md-3">{{ rating_form.note_support }}</div><div class="col-md-9">{{ rating_form.note_commentaire }}</div></div>
+                        <div class="form-actions"><button class="btn btn-accent btn-sm"><i class="bi bi-star"></i> Envoyer la note</button></div>
+                    </form>
+                {% elif selected_ticket.note_support %}
+                    <div class="support-composer disabled"><i class="bi bi-star-fill"></i> Note recue: {{ selected_ticket.note_support }}/5</div>
+                {% endif %}
+            {% else %}
+                {% if not can_manage_rh_tickets or can_handle_selected_ticket %}
+                <form method="post" action="{% url 'rh_conversation_detail' selected_ticket.id %}" class="support-composer support-js-form" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    {{ message_form.contenu }}
+                    <div class="support-composer-actions">
+                        <label class="btn btn-outline-secondary btn-sm mb-0"><i class="bi bi-paperclip"></i> {{ message_form.piece_jointe }}</label>
+                        <button class="btn btn-accent btn-sm"><i class="bi bi-send"></i> Envoyer</button>
+                    </div>
+                    <small class="text-soft">Pieces jointes autorisees: PDF, DOC, DOCX, JPG, JPEG, PNG. Max 5 Mo.</small>
+                    <small class="support-file-preview text-soft"></small>
+                </form>
+                {% else %}
+                    <div class="support-composer disabled"><i class="bi bi-person-lock"></i> Ce ticket est pris en charge par un autre RH.</div>
+                {% endif %}
+            {% endif %}
+        {% else %}
+            <div class="support-empty">
+                <i class="bi bi-chat-square-text"></i>
+                <h3>Aucun ticket selectionne</h3>
+                <p>Selectionnez un ticket dans la liste ou creez une nouvelle demande RH.</p>
+                <a href="{% url 'rh_messages' %}?tab=new" class="btn btn-accent"><i class="bi bi-plus-lg"></i> Nouveau ticket</a>
+            </div>
+        {% endif %}
+    </section>
+</div>
+{% if selected_ticket and can_manage_rh_tickets and not selected_ticket.is_closed %}
+<div class="modal fade" id="closeTicketModal" tabindex="-1" aria-labelledby="closeTicketModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" action="{% url 'rh_conversation_close' selected_ticket.id %}" class="support-js-form">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="closeTicketModalLabel">Cloturer le ticket RH</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-soft">La conversation restera consultable dans l'historique, mais les reponses seront desactivees.</p>
+                    <div class="mb-3">{{ close_form.motif_cloture.label_tag }}{{ close_form.motif_cloture }}</div>
+                    <div>{{ close_form.detail_cloture.label_tag }}{{ close_form.detail_cloture }}</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button class="btn btn-outline-danger"><i class="bi bi-lock"></i> Confirmer la cloture</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% if selected_ticket and can_handle_selected_ticket and not selected_ticket.is_closed %}
+<div class="modal fade" id="manageTicketModal" tabindex="-1" aria-labelledby="manageTicketModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title" id="manageTicketModalLabel">Gerer le ticket</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button></div>
+            <div class="modal-body">
+                <form method="post" action="{% url 'rh_conversation_rename' selected_ticket.id %}" class="support-js-form mb-3">{% csrf_token %}
+                    <label class="form-label">Renommer</label>
+                    <div class="d-flex gap-2">{{ rename_form.sujet }}<button class="btn btn-accent btn-sm">Renommer</button></div>
+                </form>
+                <form method="post" action="{% url 'rh_conversation_participant' selected_ticket.id %}" class="support-js-form mb-3">{% csrf_token %}
+                    <label class="form-label">Ajouter un participant</label>
+                    <div class="d-flex gap-2">{{ participant_form.employe }}<button name="action" value="add" class="btn btn-accent btn-sm">Ajouter</button></div>
+                </form>
+                <div class="support-participant-list">
+                    {% for participant in selected_ticket.participants.all %}
+                        <form method="post" action="{% url 'rh_conversation_participant' selected_ticket.id %}" class="support-js-form support-participant-row">{% csrf_token %}
+                            <span>{{ participant.nom_complet }}{% if participant.pk == selected_ticket.employe_id %} · createur{% endif %}</span>
+                            <input type="hidden" name="employe" value="{{ participant.pk }}">
+                            <button name="action" value="remove" class="btn btn-sm btn-outline-danger" {% if participant.pk == selected_ticket.employe_id %}disabled{% endif %}>Retirer</button>
+                        </form>
+                    {% empty %}<div class="empty-state">Aucun participant supplementaire.</div>{% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+<script>
+document.querySelectorAll(".support-js-form").forEach((form) => {
+    form.addEventListener("submit", () => {
+        form.querySelectorAll("button[type='submit'], button:not([type])").forEach((button) => {
+            button.disabled = true;
+            button.classList.add("disabled");
+        });
+    });
+    form.querySelectorAll("input[type='file']").forEach((input) => {
+        input.addEventListener("change", () => {
+            const preview = form.querySelector(".support-file-preview");
+            if (!preview) return;
+            const file = input.files && input.files[0];
+            preview.textContent = file ? `${file.name} - ${Math.ceil(file.size / 1024)} Ko` : "";
+        });
+    });
+});
+</script>
+{% endblock %}

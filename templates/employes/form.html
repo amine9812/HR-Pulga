@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<form class="form-panel" method="post" action="{% url 'employe_save' %}" enctype="multipart/form-data">
+    {% csrf_token %}
+    {% if employe %}<input type="hidden" name="id" value="{{ employe.id }}">{% endif %}
+    <div class="panel-header">
+        <div><h3>{{ page_title }}</h3><p class="mb-0">Informations du dossier employe.</p></div>
+        <button class="btn btn-accent" type="submit"><i class="bi bi-save"></i> Enregistrer</button>
+    </div>
+    {% if form.errors %}<div class="alert alert-danger">{{ form.errors }}</div>{% endif %}
+    <div class="row g-3">
+        <div class="col-md-4">{{ form.matricule.label_tag }}{{ form.matricule }}</div>
+        <div class="col-md-4">{{ form.prenom.label_tag }}{{ form.prenom }}</div>
+        <div class="col-md-4">{{ form.nom.label_tag }}{{ form.nom }}</div>
+        <div class="col-md-6">{{ form.email.label_tag }}{{ form.email }}</div>
+        <div class="col-md-6">{{ form.telephone.label_tag }}{{ form.telephone }}</div>
+        <div class="col-md-6">{{ form.date_naissance.label_tag }}{{ form.date_naissance }}</div>
+        <div class="col-md-6">{{ form.date_embauche.label_tag }}{{ form.date_embauche }}</div>
+        <div class="col-md-4">{{ form.departement.label_tag }}{{ form.departement }}</div>
+        <div class="col-md-4">{{ form.service.label_tag }}{{ form.service }}</div>
+        <div class="col-md-4">{{ form.poste.label_tag }}{{ form.poste }}</div>
+        <div class="col-md-6">{{ form.responsable.label_tag }}{{ form.responsable }}</div>
+        <div class="col-md-6">
+            <label class="form-label" for="photoFile">Photo</label>
+            <input class="form-control" type="file" id="photoFile" name="photoFile" accept="image/*">
+        </div>
+        <div class="col-12">{{ form.adresse.label_tag }}{{ form.adresse }}</div>
+        <div class="col-12 form-check">{{ form.actif }} <label class="form-check-label" for="{{ form.actif.id_for_label }}">Actif</label></div>
+    </div>
+</form>
+{% endblock %}

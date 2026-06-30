@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="panel">
+    <ul class="nav module-tabs">
+        <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#docs-mes" type="button">{% if archive_mode %}Archives{% else %}Documents actifs{% endif %}</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#docs-upload" type="button">Televerser</button></li>
+    </ul>
+    <form class="filter-row" method="get">
+        <input class="form-control" name="categorie" value="{{ categorie_filtre }}" placeholder="Categorie">
+        <select class="form-select" name="employeId"><option value="">Tous les employes autorises</option>{% for employe in employes %}<option value="{{ employe.id }}" {% if employe_filtre == employe.id|stringformat:"s" %}selected{% endif %}>{{ employe.nom_complet }}</option>{% endfor %}</select>
+        {% if can_view_archives %}
+            <select class="form-select" name="archive">
+                <option value="">Documents actifs</option>
+                <option value="1" {% if archive_mode %}selected{% endif %}>Archives</option>
+            </select>
+        {% endif %}
+        <button class="btn btn-outline-secondary">Filtrer</button>
+        <a class="btn btn-rh-soft" href="{% url 'documents_list' %}">Reinitialiser</a>
+    </form>
+    <div class="tab-content">
+        <div class="tab-pane fade show active" id="docs-mes">{% include "documents/table.html" with documents=documents %}</div>
+        <div class="tab-pane fade" id="docs-upload">
+            <form method="post" action="{% url 'document_upload' %}" enctype="multipart/form-data" class="form-panel border-0 shadow-none p-0">{% csrf_token %}
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4"><label class="form-label">Fichier</label><input class="form-control" name="file" type="file" required></div>
+                    <div class="col-md-3"><label class="form-label">Categorie</label><input class="form-control" name="categorie" placeholder="General"></div>
+                    <div class="col-md-3"><label class="form-label">Employe</label><select class="form-select" name="employeId"><option value="">Moi / aucun</option>{% for employe in employes %}<option value="{{ employe.id }}">{{ employe.nom_complet }}</option>{% endfor %}</select></div>
+                    <div class="col-md-2"><button class="btn btn-accent w-100">Televerser</button></div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

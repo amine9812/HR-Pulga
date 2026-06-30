@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="panel admin-requests">
+    <div class="panel-header">
+        <div><h3>Demandes administratives</h3><p class="mb-0">Boite de suivi des demandes, reponses RH et historiques.</p></div>
+        <a href="{% url 'demande_create' %}" class="btn btn-accent"><i class="bi bi-plus-lg"></i> Nouvelle demande</a>
+    </div>
+    <ul class="nav module-tabs" role="tablist">
+        <li class="nav-item"><a class="nav-link {% if active_tab == 'attente' %}active{% endif %}" href="?tab=attente">En attente <span class="request-count">{{ pending_count }}</span></a></li>
+        <li class="nav-item"><a class="nav-link {% if active_tab == 'validees' %}active{% endif %}" href="?tab=validees">Validees <span class="request-count">{{ accepted_count }}</span></a></li>
+        <li class="nav-item"><a class="nav-link {% if active_tab == 'refusees' %}active{% endif %}" href="?tab=refusees">Refusees <span class="request-count">{{ rejected_count }}</span></a></li>
+    </ul>
+    <form class="filter-row" method="get">
+        <input type="hidden" name="tab" value="{{ active_tab }}">
+        <select class="form-select" name="statut">
+            <option value="">Statut du tab courant</option>
+            {% for value,label in statuts %}<option value="{{ value }}" {% if statut_filtre == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+        <button class="btn btn-outline-secondary">Filtrer</button>
+        <a class="btn btn-rh-soft" href="{% url 'demandes_list' %}?tab={{ active_tab }}">Reinitialiser</a>
+    </form>
+    <div class="request-inbox">
+        {% for demande in demandes %}
+            <a class="request-inbox-item" href="{% url 'demande_detail' demande.id %}">
+                <span class="request-inbox-icon"><i class="bi bi-file-earmark-text"></i></span>
+                <span class="request-inbox-main">
+                    <strong>{{ demande.type_demande }}</strong>
+                    <small>{{ demande.employe.nom_complet|default:"Employe indisponible" }} · {{ demande.date_creation|date:"d/m/Y H:i" }}</small>
+                    <span>{{ demande.description|truncatechars:140 }}</span>
+                </span>
+                <span class="request-inbox-meta">
+                    <span class="status-badge status-{{ demande.statut }}">{{ demande.get_statut_display }}</span>
+                    {% if demande.documents.count %}<small><i class="bi bi-paperclip"></i> {{ demande.documents.count }}</small>{% endif %}
+                </span>
+            </a>
+        {% empty %}
+            <div class="empty-state">
+                {% if active_tab == "validees" %}Aucune demande validee pour le moment.
+                {% elif active_tab == "refusees" %}Aucune demande refusee pour le moment.
+                {% else %}Aucune demande en attente. Les nouvelles demandes apparaitront ici.
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

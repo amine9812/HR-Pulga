@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<form class="form-panel" method="post" action="{% url 'conge_submit' %}" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="panel-header"><div><h3>Nouvelle demande de conge</h3><p class="mb-0">Renseignez les dates et le type de conge.</p></div><button class="btn btn-accent">Soumettre</button></div>
+    {% if form.errors %}<div class="alert alert-danger">{{ form.errors }}</div>{% endif %}
+    <div class="row g-3">
+        <div class="col-md-4">{{ form.type.label_tag }}{{ form.type }}</div>
+        <div class="col-md-4">{{ form.date_debut.label_tag }}{{ form.date_debut }}</div>
+        <div class="col-md-4">{{ form.date_fin.label_tag }}{{ form.date_fin }}<div id="nombreJours" class="text-soft mt-1"></div></div>
+        <div class="col-12">{{ form.motif.label_tag }}{{ form.motif }}</div>
+        <div class="col-12 file-field"><label class="form-label">Justificatif</label><input class="form-control" type="file" name="justificatif"><small class="selected-file text-soft">Aucun fichier selectionne</small></div>
+    </div>
+</form>
+{% endblock %}

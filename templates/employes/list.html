@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="panel">
+    <div class="panel-header">
+        <div><h3>Employes</h3><p class="mb-0">Liste et recherche des collaborateurs.</p></div>
+        {% if utilisateur_connecte.role == "ADMIN" or utilisateur_connecte.role == "RESPONSABLE_RH" %}
+            <a href="{% url 'employe_create' %}" class="btn btn-accent btn-compact"><i class="bi bi-plus-lg"></i> Ajouter</a>
+        {% endif %}
+    </div>
+    <form class="search-row" method="get">
+        <input class="form-control" name="search" value="{{ search }}" placeholder="Rechercher par nom, email, matricule, departement...">
+        <button class="btn btn-outline-secondary" type="submit"><i class="bi bi-search"></i></button>
+    </form>
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead><tr><th>Matricule</th><th>Nom</th><th>Email</th><th>Departement</th><th>Poste</th><th>Statut</th><th></th></tr></thead>
+            <tbody>
+            {% for employe in employes %}
+                <tr>
+                    <td>{{ employe.matricule }}</td>
+                    <td><a href="{% url 'employe_detail' employe.id %}">{{ employe.nom_complet }}</a></td>
+                    <td>{{ employe.email }}</td>
+                    <td>{{ employe.departement|default:"-" }}</td>
+                    <td>{{ employe.poste|default:"-" }}</td>
+                    <td>{% if employe.actif %}<span class="status-badge status-VALIDEE">Actif</span>{% else %}<span class="status-badge status-CLOTUREE">Archive</span>{% endif %}</td>
+                    <td class="text-end">
+                        <a class="btn btn-sm btn-outline-secondary" href="{% url 'employe_detail' employe.id %}"><i class="bi bi-eye"></i></a>
+                        {% if utilisateur_connecte.role == "ADMIN" or utilisateur_connecte.role == "RESPONSABLE_RH" %}
+                            <a class="btn btn-sm btn-outline-secondary" href="{% url 'employe_update' employe.id %}"><i class="bi bi-pencil"></i></a>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% empty %}<tr><td colspan="7" class="empty-state">Aucun employe trouve.</td></tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

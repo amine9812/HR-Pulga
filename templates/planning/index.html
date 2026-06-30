@@ -1,0 +1,309 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<div
+    class="planning-workspace"
+    data-shifts-url="{% url 'planning_api_shifts' %}"
+    data-bulk-url="{% url 'planning_api_bulk' %}"
+    data-conflicts-url="{% url 'planning_api_conflicts' %}"
+    data-assistant-url="{% url 'planning_api_assistant' %}"
+>
+    <section class="planning-hero planning-compact-hero panel">
+        <div>
+            <h2>{% if active_tab == "overview" %}Overview{% elif active_tab == "calendar" %}Calendar Schedule{% elif active_tab == "daily" %}Daily Planning{% elif active_tab == "weekly" %}Weekly Planning{% elif active_tab == "biweekly" %}Bi-weekly Planning{% elif active_tab == "monthly" %}Monthly Planning{% elif active_tab == "timesheets" %}Timesheets{% elif active_tab == "shifts" %}Shift Management{% elif active_tab == "attendance" %}Attendance{% elif active_tab == "leave" %}Leave / Time Off{% elif active_tab == "tasks" %}Project & Task Planning{% elif active_tab == "reports" %}Reports{% else %}Settings{% endif %}</h2>
+            <p class="text-soft mb-0">{{ date_debut }} - {{ date_fin }}</p>
+        </div>
+        <div class="planning-hero-actions">
+            <a class="btn btn-rh-soft btn-sm" href="{% url 'planning' %}?tab={{ active_tab }}&date_debut={{ prev_start }}&date_fin={{ prev_end }}" title="Periode precedente"><i class="bi bi-chevron-left"></i></a>
+            <a class="btn btn-rh-soft btn-sm" href="{% url 'planning' %}?tab={{ active_tab }}"><i class="bi bi-calendar-day"></i> Today</a>
+            <a class="btn btn-rh-soft btn-sm" href="{% url 'planning' %}?tab={{ active_tab }}&date_debut={{ next_start }}&date_fin={{ next_end }}" title="Periode suivante"><i class="bi bi-chevron-right"></i></a>
+            {% if can_manage %}
+                <button class="btn btn-accent btn-sm" type="button" data-bs-toggle="offcanvas" data-bs-target="#shiftOffcanvas"><i class="bi bi-plus-lg"></i> Shift</button>
+            {% endif %}
+        </div>
+    </section>
+
+    <section class="planning-compact-stats" aria-label="Planning indicators">
+        <span class="planning-stat-chip"><span class="planning-stat-label">Scheduled</span><strong>{{ summary.total_shifts|default:0 }}</strong><i class="bi bi-calendar-check"></i></span>
+        <span class="planning-stat-chip"><span class="planning-stat-label">Permanent</span><strong>{{ summary.permanent_plans|default:0 }}</strong><i class="bi bi-infinity"></i></span>
+        <span class="planning-stat-chip"><span class="planning-stat-label">Pending</span><strong>{{ leave_summary.pending|default:0 }}</strong><i class="bi bi-hourglass-split"></i></span>
+        <span class="planning-stat-chip {% if task_summary.overdue %}danger{% endif %}"><span class="planning-stat-label">Overdue</span><strong>{{ task_summary.overdue|default:0 }}</strong><i class="bi bi-exclamation-triangle"></i></span>
+        <span class="planning-stat-chip"><span class="planning-stat-label">On leave</span><strong>{{ leave_summary.approved|default:0 }}</strong><i class="bi bi-calendar2-check"></i></span>
+        <span class="planning-stat-chip {% if hour_warnings %}warning{% endif %}"><span class="planning-stat-label">Weekly hours</span><strong>{{ summary.planned_hours|default:0 }}</strong><i class="bi bi-clock-history"></i></span>
+        <span class="planning-stat-chip {% if summary.conflicts %}danger{% endif %}"><span class="planning-stat-label">Alerts</span><strong>{{ summary.conflicts|default:0 }}</strong><i class="bi bi-shield-exclamation"></i></span>
+    </section>
+
+    <section class="planning-toolbar planning-compact-filter panel">
+        <form method="get" class="planning-filter-form mb-0">
+            <input type="hidden" name="tab" value="{{ active_tab }}">
+            <div class="planning-filter-primary">
+                <input type="date" name="date_debut" value="{{ date_debut }}" class="form-control form-control-sm">
+                <input type="date" name="date_fin" value="{{ date_fin }}" class="form-control form-control-sm">
+                <input name="search" value="{{ search }}" class="form-control form-control-sm" placeholder="Search">
+                <button class="btn btn-accent btn-sm"><i class="bi bi-funnel"></i></button>
+                <button class="btn btn-rh-soft btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#planningMoreFilters" aria-expanded="false"><i class="bi bi-sliders"></i> More</button>
+                <a class="btn btn-rh-soft btn-sm" href="{% url 'planning' %}?tab={{ active_tab }}"><i class="bi bi-x-lg"></i></a>
+            </div>
+            <div class="collapse" id="planningMoreFilters">
+                <div class="planning-filter-more">
+                    <select name="employe" class="form-select form-select-sm">
+                        <option value="">Employee</option>
+                        {% for employe in employes %}<option value="{{ employe.pk }}" {% if employe_filtre == employe.pk|stringformat:"s" %}selected{% endif %}>{{ employe.nom_complet }}</option>{% endfor %}
+                    </select>
+                    <select name="departement" class="form-select form-select-sm">
+                        <option value="">Department</option>
+                        {% for departement in departements %}<option value="{{ departement.pk }}" {% if departement_filtre == departement.pk|stringformat:"s" %}selected{% endif %}>{{ departement.libelle }}</option>{% endfor %}
+                    </select>
+                    <select name="service" class="form-select form-select-sm">
+                        <option value="">Service</option>
+                        {% for service in services %}<option value="{{ service.pk }}" {% if service_filtre == service.pk|stringformat:"s" %}selected{% endif %}>{{ service.libelle }}</option>{% endfor %}
+                    </select>
+                    <select name="statut" class="form-select form-select-sm">
+                        <option value="">Status</option>
+                        {% for value,label in statuts %}<option value="{{ value }}" {% if statut_filtre == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                    </select>
+                    <select name="planning_type" class="form-select form-select-sm">
+                        <option value="">Planning type</option>
+                        <option value="normal" {% if planning_type_filtre == "normal" %}selected{% endif %}>Normal plan</option>
+                        <option value="permanent" {% if planning_type_filtre == "permanent" %}selected{% endif %}>Permanent plan</option>
+                        <option value="task" {% if planning_type_filtre == "task" %}selected{% endif %}>Task</option>
+                        <option value="leave" {% if planning_type_filtre == "leave" %}selected{% endif %}>Leave</option>
+                        <option value="attendance" {% if planning_type_filtre == "attendance" %}selected{% endif %}>Attendance</option>
+                    </select>
+                    <select name="conflict_level" class="form-select form-select-sm">
+                        <option value="">Priority/conflict</option>
+                        <option value="warning" {% if conflict_level_filtre == "warning" %}selected{% endif %}>Warnings</option>
+                        <option value="conflict" {% if conflict_level_filtre == "conflict" %}selected{% endif %}>Conflicts</option>
+                    </select>
+                </div>
+            </div>
+        </form>
+        {% if search or employe_filtre or departement_filtre or service_filtre or statut_filtre or planning_type_filtre or conflict_level_filtre %}
+            <div class="planning-active-filters">
+                {% if search %}<a class="planning-filter-chip" href="{% url 'planning' %}?tab={{ active_tab }}&date_debut={{ date_debut }}&date_fin={{ date_fin }}">Search: {{ search }} <i class="bi bi-x"></i></a>{% endif %}
+                {% if employe_filtre %}<span class="planning-filter-chip">Employee #{{ employe_filtre }}</span>{% endif %}
+                {% if departement_filtre %}<span class="planning-filter-chip">Department #{{ departement_filtre }}</span>{% endif %}
+                {% if service_filtre %}<span class="planning-filter-chip">Service #{{ service_filtre }}</span>{% endif %}
+                {% if statut_filtre %}<span class="planning-filter-chip">Status: {{ statut_filtre }}</span>{% endif %}
+                {% if planning_type_filtre %}<span class="planning-filter-chip">Type: {{ planning_type_filtre }}</span>{% endif %}
+                {% if conflict_level_filtre %}<span class="planning-filter-chip">Alert: {{ conflict_level_filtre }}</span>{% endif %}
+            </div>
+        {% endif %}
+    </section>
+
+    {% if active_tab == "overview" %}
+        <div class="planning-mini-grid mb-3">
+            <div class="planning-mini-card"><i class="bi bi-person-check"></i><strong>{{ attendance_summary.records }}</strong><span>Attendance</span><small>{{ attendance_summary.hours }} h</small></div>
+            <div class="planning-mini-card"><i class="bi bi-alarm"></i><strong>{{ attendance_summary.late }}</strong><span>Late</span><small>period</small></div>
+            <div class="planning-mini-card"><i class="bi bi-calendar2-check"></i><strong>{{ leave_summary.approved }}</strong><span>Leave</span><small>{{ leave_summary.pending }} pending</small></div>
+            <div class="planning-mini-card"><i class="bi bi-list-check"></i><strong>{{ task_summary.planned }}</strong><span>Tasks</span><small>{{ task_summary.overdue }} overdue</small></div>
+        </div>
+        <section class="panel mb-3"><div class="panel-header"><h3>Alertes planning</h3></div>
+            {% for warning in hour_warnings %}<div class="request-item"><div><strong>{{ warning.employee.nom_complet }}</strong><small>{{ warning.hours }} h planifiees, limite indicative {{ weekly_limit }} h</small></div><span class="status-badge status-retard">Limite</span></div>{% empty %}<div class="empty-state">Aucune alerte d'heures sur la periode.</div>{% endfor %}
+        </section>
+    {% elif active_tab == "timesheets" %}
+        <section class="panel"><div class="panel-header"><h3>Timesheets</h3><span class="status-badge status-publie">{{ attendance_summary.hours }} h</span></div>
+            {% for pointage in pointages %}<div class="request-item"><div><strong>{{ pointage.employe.nom_complet }}</strong><small>{{ pointage.date }} - {{ pointage.heure_entree|date:"H:i"|default:"-" }} / {{ pointage.heure_sortie|date:"H:i"|default:"En cours" }} - {{ pointage.total_heures }} h</small></div><span class="status-badge status-{{ pointage.statut }}">{{ pointage.get_statut_display }}</span></div>{% empty %}<div class="empty-state">Aucune feuille de temps sur cette periode.</div>{% endfor %}
+        </section>
+    {% elif active_tab == "attendance" %}
+        <section class="panel"><div class="panel-header"><h3>Attendance summary</h3><span class="status-badge status-publie">{{ attendance_summary.records }} pointage(s)</span></div>
+            {% for pointage in pointages %}<div class="request-item"><div><strong>{{ pointage.employe.nom_complet }}</strong><small>{{ pointage.date }} - {{ pointage.get_statut_display }} - {{ pointage.points_calcules }} points</small></div><span class="status-badge status-{{ pointage.statut }}">{{ pointage.total_heures }} h</span></div>{% empty %}<div class="empty-state">Aucun pointage trouve.</div>{% endfor %}
+        </section>
+    {% elif active_tab == "leave" %}
+        <section class="panel"><div class="panel-header"><h3>Leave / Time Off Planning</h3><span class="status-badge status-validee">{{ leave_summary.approved }} valide(s)</span></div>
+            {% for leave in leaves %}<div class="request-item"><div><strong>{{ leave.employe.nom_complet }}</strong><small>{{ leave.get_type_display }} - {{ leave.date_debut }} au {{ leave.date_fin }}</small></div><span class="status-badge status-{{ leave.statut }}">{{ leave.statut }}</span></div>{% empty %}<div class="empty-state">Aucun conge sur cette periode.</div>{% endfor %}
+        </section>
+    {% elif active_tab == "tasks" %}
+        <section class="panel"><div class="panel-header"><h3>Project & Task Planning</h3><span class="status-badge status-publie">{{ task_summary.planned }}</span></div>
+            {% for task in planning_tasks %}<div class="request-item"><div><strong>{{ task.titre }}</strong><small>{{ task.assignee.nom_complet|default:"Equipe ouverte" }} - deadline {{ task.date_limite|date:"d/m/Y H:i"|default:"Sans deadline" }}</small></div><span class="status-badge status-{{ task.statut }}">{{ task.get_statut_display }}</span></div>{% empty %}<div class="empty-state">Aucune tache liee au planning sur cette periode.</div>{% endfor %}
+        </section>
+    {% elif active_tab == "reports" %}
+        <section class="panel"><div class="panel-header"><h3>Reports & Exports</h3></div>
+            <div class="feature-dock">
+                <article class="feature-card"><i class="bi bi-clock-history"></i><strong>Planned vs actual</strong><span>{{ summary.planned_hours }} h planifiees / {{ attendance_summary.hours }} h pointees</span></article>
+                <article class="feature-card"><i class="bi bi-exclamation-triangle"></i><strong>Conflits</strong><span>{{ summary.conflicts }} conflit(s), {{ attendance_summary.late }} retard(s)</span></article>
+                <article class="feature-card"><i class="bi bi-calendar2-check"></i><strong>Conges</strong><span>{{ leave_summary.approved }} valide(s), {{ leave_summary.pending }} en attente</span></article>
+            </div>
+        </section>
+    {% elif active_tab == "settings" %}
+        <section class="panel"><div class="panel-header"><h3>Planning Settings</h3></div>
+            <div class="feature-dock">
+                <article class="feature-card"><i class="bi bi-calendar-week"></i><strong>Jours travailles</strong><span>Lundi - Vendredi</span><small>Parametre indicatif actuel</small></article>
+                <article class="feature-card"><i class="bi bi-clock"></i><strong>Limite hebdomadaire</strong><span>{{ weekly_limit }} h</span><small>Alerte visuelle, non bloquante</small></article>
+                <article class="feature-card"><i class="bi bi-bell"></i><strong>Notifications</strong><span>Creation et modification de shift</span><small>Via notifications internes existantes</small></article>
+            </div>
+        </section>
+    {% else %}
+    <section class="planning-grid-panel panel">
+        <div class="panel-header">
+            <div>
+                <span class="eyebrow">Vue semaine</span>
+                <h3>Grille employe / jour</h3>
+            </div>
+            <span class="status-badge status-publie">{{ grid_days|length }} jour(s)</span>
+        </div>
+        <div class="planning-grid-table">
+            <div class="planning-grid-head">
+                <div class="planning-grid-employee">Employe</div>
+                {% for day in grid_days %}<div class="planning-grid-day">{{ day|date:"D d/m" }}</div>{% endfor %}
+            </div>
+            {% for row in grid_rows %}
+                <div class="planning-grid-row">
+                    <div class="planning-grid-employee">
+                        <strong>{{ row.employee.nom_complet }}</strong>
+                        <small>{{ row.employee.departement|default:"Sans departement" }} - {{ row.total_hours }} h</small>
+                    </div>
+                    {% for cell in row.cells %}
+                        <div class="planning-grid-cell" data-day="{{ cell.day|date:'Y-m-d' }}" data-employee-id="{{ row.employee.pk }}">
+                            {% for shift in cell.shifts %}
+                                <article class="planning-shift-block status-border-{{ shift.statut }}" draggable="{% if can_manage and shift.plan_type == 'normal' %}true{% else %}false{% endif %}" data-shift-id="{{ shift.pk }}" data-start="{{ shift.date_debut|date:'c' }}" data-end="{% if shift.date_fin %}{{ shift.date_fin|date:'c' }}{% endif %}">
+                                    <div class="shift-card-top">
+                                        <strong>{{ shift.date_debut|date:"H:i" }} - {% if shift.effective_end_time %}{{ shift.effective_end_time|time:"H:i" }}{% else %}--{% endif %}</strong>
+                                        <span class="status-badge status-{{ shift.statut }}">{{ shift.get_statut_display }}</span>
+                                    </div>
+                                    <span>{{ shift.titre }}</span>
+                                    <small>{{ shift.lieu }} - {{ shift.pause_minutes }} min pause{% if shift.plan_type == "permanent" %} - {{ shift.get_plan_type_display }}{% endif %}</small>
+                                    {% if can_manage %}
+                                        <div class="shift-inline-actions">
+                                            <button class="btn btn-sm btn-light js-edit-shift" type="button" title="Modifier"><i class="bi bi-pencil"></i></button>
+                                            <button class="btn btn-sm btn-light js-resize-shift" type="button" data-minutes="30" title="Ajouter 30 min"><i class="bi bi-arrows-expand"></i></button>
+                                            <button class="btn btn-sm btn-light js-resize-shift" type="button" data-minutes="-30" title="Retirer 30 min"><i class="bi bi-arrows-collapse"></i></button>
+                                        </div>
+                                    {% endif %}
+                                </article>
+                            {% empty %}
+                                <button class="planning-empty-slot js-new-shift" type="button" {% if not can_manage %}disabled{% endif %}>+</button>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% empty %}
+                <div class="empty-state">Aucun employe visible pour ces filtres.</div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    {% if active_tab == "calendar" or active_tab == "daily" or active_tab == "weekly" or active_tab == "biweekly" or active_tab == "monthly" or active_tab == "shifts" %}
+    <div class="row g-3">
+        {% if can_manage %}
+        <div class="col-xl-7">
+            <section class="planning-builder form-panel h-100">
+                <div class="panel-header">
+                    <div>
+                        <span class="eyebrow">Creation groupee</span>
+                        <h3>Planifier par service, departement, entreprise ou selection</h3>
+                    </div>
+                </div>
+                <form method="post" action="{% url 'planning_create' %}" class="row g-3">
+                    {% csrf_token %}
+                    <div class="col-lg-3 col-md-4">{{ form.scope.label_tag }}{{ form.scope }}</div>
+                    <div class="col-lg-3 col-md-4">{{ form.titre.label_tag }}{{ form.titre }}</div>
+                    <div class="col-lg-3 col-md-4">{{ form.departement.label_tag }}{{ form.departement }}</div>
+                    <div class="col-lg-3 col-md-4">{{ form.service.label_tag }}{{ form.service }}</div>
+                    <div class="col-lg-6 col-md-8">{{ form.employes.label_tag }}{{ form.employes }}</div>
+                    <div class="col-lg-3 col-md-4">{{ form.lieu.label_tag }}{{ form.lieu }}</div>
+                    <div class="col-lg-3 col-md-4">{{ form.plan_type.label_tag }}{{ form.plan_type }}</div>
+                    <div class="col-lg-3 col-md-4">{{ form.recurrence_rule.label_tag }}{{ form.recurrence_rule }}</div>
+                    <div class="col-lg-3 col-md-4">{{ form.statut.label_tag }}{{ form.statut }}</div>
+                    <div class="col-lg-3 col-md-4">{{ form.date_debut.label_tag }}{{ form.date_debut }}</div>
+                    <div class="col-lg-3 col-md-4">{{ form.date_fin.label_tag }}{{ form.date_fin }}</div>
+                    <div class="col-lg-3 col-md-4">{{ form.permanent_end_time.label_tag }}{{ form.permanent_end_time }}</div>
+                    <div class="col-lg-3 col-md-4">{{ form.pause_minutes.label_tag }}{{ form.pause_minutes }}</div>
+                    <div class="col-lg-3 col-md-4">{{ form.pause_debut.label_tag }}{{ form.pause_debut }}</div>
+                    <div class="col-lg-6">{{ form.notes.label_tag }}{{ form.notes }}</div>
+                    <div class="col-12"><button class="btn btn-accent"><i class="bi bi-lightning-charge"></i> Creer le planning</button></div>
+                </form>
+            </section>
+        </div>
+        {% endif %}
+        <div class="{% if can_manage %}col-xl-5{% else %}col-12{% endif %}">
+            <section class="assistant-panel panel h-100">
+                <div class="panel-header">
+                    <div>
+                        <span class="eyebrow">Assistant Planning</span>
+                        <h3>Questions et aide intelligente</h3>
+                    </div>
+                    <span class="pulse-dot"></span>
+                </div>
+                <div id="planningChatMessages" class="planning-chat-log">
+                    <div class="assistant-message">Posez une question sur le planning visible. Les actions de modification sont reservees aux RH/Admin.</div>
+                </div>
+                <form id="planningAssistantForm" class="assistant-chat-form">
+                    {% csrf_token %}
+                    <input name="message" class="form-control" placeholder="Ex: Montre les conflits de cette semaine">
+                    <button class="btn btn-accent" type="submit"><i class="bi bi-send"></i></button>
+                </form>
+                <div class="assistant-prompts mt-3">
+                    <button class="prompt-chip js-assistant-prompt" type="button">Afficher les conflits</button>
+                    <button class="prompt-chip js-assistant-prompt" type="button">Qui est sans planning cette semaine ?</button>
+                    <button class="prompt-chip js-assistant-prompt" type="button">Resume les heures planifiees</button>
+                </div>
+            </section>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if conflicts %}
+        <section class="panel">
+            <div class="panel-header"><h3>Conflits detectes</h3><span class="status-badge status-retard">{{ conflicts|length }}</span></div>
+            <div class="request-list">
+                {% for conflict in conflicts %}
+                    <div class="request-item"><div><strong>{{ conflict.shift.employee }}</strong><small>{{ conflict.message }}</small></div><span class="status-badge status-refusee">{{ conflict.type }}</span></div>
+                {% endfor %}
+            </div>
+        </section>
+    {% endif %}
+
+    {% if open_shifts %}
+        <section class="panel">
+            <div class="panel-header"><h3>Shifts ouverts</h3><span class="status-badge status-ouvert">{{ open_shifts|length }}</span></div>
+            <div class="feature-dock">
+                {% for shift in open_shifts %}
+                    <article class="feature-card"><i class="bi bi-calendar-plus"></i><strong>{{ shift.titre }}</strong><span>{{ shift.date_debut|date:"d/m H:i" }} - {% if shift.effective_end_time %}{{ shift.effective_end_time|time:"H:i" }}{% else %}--{% endif %}</span><small>{{ shift.departement|default:"Sans departement" }}</small></article>
+                {% endfor %}
+            </div>
+        </section>
+    {% endif %}
+
+    {% if can_manage %}
+    <div class="offcanvas offcanvas-end planning-offcanvas" tabindex="-1" id="shiftOffcanvas">
+        <div class="offcanvas-header">
+            <div>
+                <span class="eyebrow">Shift</span>
+                <h5 class="offcanvas-title" id="shiftOffcanvasTitle">Ajouter un shift</h5>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fermer"></button>
+        </div>
+        <div class="offcanvas-body">
+            <form id="shiftEditorForm" class="form-panel border-0 shadow-none p-0">
+                {% csrf_token %}
+                <input type="hidden" name="shift_id">
+                <div class="row g-3">
+                    <div class="col-12"><label class="form-label">Titre</label><input class="form-control" name="title" value="Shift" required></div>
+                    <div class="col-12"><label class="form-label">Employe</label><select class="form-select" name="employee_id"><option value="">Shift ouvert</option>{% for employe in employes %}<option value="{{ employe.pk }}">{{ employe.nom_complet }}</option>{% endfor %}</select></div>
+                    <div class="col-md-6"><label class="form-label">Departement</label><select class="form-select" name="department_id"><option value="">Auto</option>{% for departement in departements %}<option value="{{ departement.pk }}">{{ departement.libelle }}</option>{% endfor %}</select></div>
+                    <div class="col-md-6"><label class="form-label">Service</label><select class="form-select" name="service_id"><option value="">Auto</option>{% for service in services %}<option value="{{ service.pk }}">{{ service.libelle }}</option>{% endfor %}</select></div>
+                    <div class="col-md-6"><label class="form-label">Type</label><select class="form-select" name="plan_type"><option value="normal">Plan normal</option><option value="permanent">Plan permanent</option></select></div>
+                    <div class="col-md-6"><label class="form-label">Recurrence</label><select class="form-select" name="recurrence_rule"><option value="none">Aucune</option><option value="weekdays">Jours ouvrables</option><option value="daily">Tous les jours</option><option value="weekly">Hebdomadaire</option></select></div>
+                    <div class="col-md-6"><label class="form-label">Debut</label><input class="form-control" type="datetime-local" name="starts_at" required></div>
+                    <div class="col-md-6"><label class="form-label">Fin</label><input class="form-control" type="datetime-local" name="ends_at"></div>
+                    <div class="col-md-6"><label class="form-label">Fin standard</label><input class="form-control" type="time" name="permanent_end_time"></div>
+                    <div class="col-md-6"><label class="form-label">Pause minutes</label><input class="form-control" type="number" min="0" max="240" name="break_minutes" value="0"></div>
+                    <div class="col-md-6"><label class="form-label">Debut pause</label><input class="form-control" type="datetime-local" name="break_starts_at"></div>
+                    <div class="col-md-6"><label class="form-label">Statut</label><select class="form-select" name="status">{% for value,label in statuts %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></div>
+                    <div class="col-md-6"><label class="form-label">Lieu</label><input class="form-control" name="location" value="Casablanca"></div>
+                    <div class="col-12"><label class="form-label">Notes</label><textarea class="form-control" name="notes" rows="3"></textarea></div>
+                    <div class="col-12 planning-form-errors" hidden></div>
+                    <div class="col-12 d-flex justify-content-between gap-2">
+                        <button class="btn btn-outline-danger js-cancel-shift" type="button" hidden><i class="bi bi-x-circle"></i> Annuler shift</button>
+                        <button class="btn btn-accent ms-auto" type="submit"><i class="bi bi-check2"></i> Enregistrer</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+</div>
+<script src="{% static 'js/planning.js' %}?v=planning-ai-1"></script>
+{% endblock %}

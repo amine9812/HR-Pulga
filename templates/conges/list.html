@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="panel leave-workflow">
+    <div class="panel-header">
+        <div><h3>Conges & Absences</h3><p class="mb-0">Validation en deux etapes: manager puis RH.</p></div>
+        <a href="{% url 'conge_create' %}" class="btn btn-accent"><i class="bi bi-plus-lg"></i> Nouvelle demande</a>
+    </div>
+    <form class="filter-row" method="get">
+        <select class="form-select" name="statut">
+            <option value="">Tous les statuts</option>
+            {% for value,label in statuts %}<option value="{{ value }}" {% if statut_filtre == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+        <select class="form-select" name="type">
+            <option value="">Tous les types</option>
+            {% for value,label in types %}<option value="{{ value }}" {% if type_filtre == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+        <button class="btn btn-outline-secondary">Filtrer</button>
+    </form>
+    <div class="table-responsive">
+        <table class="table align-middle leave-table">
+            <thead><tr><th>Employe</th><th>Demande</th><th>Manager</th><th>RH</th><th>Statut final</th><th>Actions</th></tr></thead>
+            <tbody>
+            {% for demande in demandes %}
+                <tr>
+                    <td>
+                        <strong>{{ demande.employe.nom_complet|default:"Employe indisponible" }}</strong>
+                        <small class="text-soft d-block">Manager: {{ demande.employe.responsable.nom_complet|default:"Non assigne" }}</small>
+                    </td>
+                    <td>
+                        <strong>{{ demande.get_type_display }}</strong>
+                        <small class="text-soft d-block">{{ demande.date_debut|date:"d/m/Y" }} au {{ demande.date_fin|date:"d/m/Y" }} · {{ demande.duree_jours }} jour(s)</small>
+                        {% if demande.motif %}<small class="text-soft d-block">{{ demande.motif }}</small>{% endif %}
+                    </td>
+                    <td>
+                        <span class="approval-chip approval-{{ demande.manager_approval_status }}">{{ demande.manager_approval_label }}</span>
+                        <small class="text-soft d-block">{% if demande.manager_approved_by %}{{ demande.manager_approved_by.nom_complet }}{% else %}En attente du manager{% endif %}</small>
+                        {% if demande.manager_refusal_reason %}<small class="text-danger d-block">{{ demande.manager_refusal_reason }}</small>{% endif %}
+                    </td>
+                    <td>
+                        <span class="approval-chip approval-{{ demande.hr_approval_status }}">{{ demande.hr_approval_label }}</span>
+                        <small class="text-soft d-block">{% if demande.hr_approved_by %}{{ demande.hr_approved_by.nom_complet }}{% else %}En attente RH{% endif %}</small>
+                        {% if demande.hr_refusal_reason %}<small class="text-danger d-block">{{ demande.hr_refusal_reason }}</small>{% endif %}
+                    </td>
+                    <td>
+                        <span class="status-badge status-{{ demande.statut }}">{{ demande.get_statut_display }}</span>
+                        <small class="text-soft d-block">{{ demande.workflow_waiting_label }}</small>
+                    </td>
+                    <td class="text-end leave-actions">
+                        {% if demande.statut == "EN_ATTENTE" or demande.statut == "EN_COURS" %}
+                            {% if utilisateur_connecte.role == "EMPLOYE" and demande.employe_id == utilisateur_connecte.employe_id %}
+                                <form method="post" action="{% url 'conge_cancel' demande.id %}" class="d-inline">{% csrf_token %}
+                                    <button class="btn btn-sm btn-outline-secondary">Annuler</button>
+                                </form>
+                            {% endif %}
+                            {% if utilisateur_connecte.role == "RESPONSABLE_HIERARCHIQUE" and demande.employe.responsable_id == utilisateur_connecte.employe_id and demande.manager_approval_status == "pending" %}
+                                <form method="post" action="{% url 'conge_validate' demande.id %}" class="d-inline">{% csrf_token %}
+                                    <button class="btn btn-sm btn-success" title="Approuver manager"><i class="bi bi-check-lg"></i></button>
+                                </form>
+                                <form method="post" action="{% url 'conge_refuse' demande.id %}" class="d-inline" onsubmit="return confirm('Confirmer le refus manager ?');">{% csrf_token %}
+                                    <input type="hidden" name="commentaire" value="Refus manager">
+                                    <button class="btn btn-sm btn-danger" title="Refuser manager"><i class="bi bi-x-lg"></i></button>
+                                </form>
+                            {% endif %}
+                            {% if utilisateur_connecte.role == "ADMIN" or utilisateur_connecte.role == "RESPONSABLE_RH" %}
+                                {% if demande.hr_approval_status == "pending" %}
+                                    <form method="post" action="{% url 'conge_validate' demande.id %}" class="d-inline">{% csrf_token %}
+                                        <button class="btn btn-sm btn-success" title="Approuver RH"><i class="bi bi-check2-circle"></i></button>
+                                    </form>
+                                    <form method="post" action="{% url 'conge_refuse' demande.id %}" class="d-inline" onsubmit="return confirm('Confirmer le refus RH ?');">{% csrf_token %}
+                                        <input type="hidden" name="commentaire" value="Refus RH">
+                                        <button class="btn btn-sm btn-danger" title="Refuser RH"><i class="bi bi-x-circle"></i></button>
+                                    </form>
+                                {% endif %}
+                            {% endif %}
+                        {% else %}
+                            <span class="text-soft">Finalisee</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% empty %}<tr><td colspan="6" class="empty-state">Aucune demande de conge accessible pour votre role.</td></tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

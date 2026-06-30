@@ -1,0 +1,201 @@
+{% load static message_tags %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ page_title|default:"RH Plateforme" }} - RH Plateforme</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="{% static 'favicon.svg' %}">
+    <link rel="stylesheet" href="{% static 'css/main.css' %}?v=kpi-saas-v5">
+</head>
+<body class="app-body">
+<div class="app-shell">
+    <aside id="sidebar" class="app-sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-mark"><i class="bi bi-grid-3x3-gap-fill"></i></div>
+            <div class="brand-copy">
+                <div class="brand-title">RH Plateforme</div>
+                <div class="brand-subtitle">Suite RH interne</div>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav" aria-label="Navigation principale">
+            <a href="{% url 'dashboard' %}" class="sidebar-item nav-link" data-route="/dashboard"><i class="bi bi-grid-1x2"></i><span>Tableau de bord</span></a>
+
+            <div class="sidebar-group" data-group-route="/employes">
+                <button class="sidebar-item sidebar-parent nav-link {% if nav_module == 'employes' %}active{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#menuEmployes" aria-expanded="{% if nav_module == 'employes' %}true{% else %}false{% endif %}">
+                    <i class="bi bi-people"></i><span>Employes</span><i class="bi bi-chevron-down ms-auto"></i>
+                </button>
+                <div class="collapse sidebar-submenu {% if nav_module == 'employes' %}show{% endif %}" id="menuEmployes">
+                    <a href="{% url 'employes_list' %}" class="sidebar-subitem {% if nav_item == 'employes_list' %}active{% endif %}" data-route="/employes"><i class="bi bi-person-lines-fill"></i><span>Liste des employes</span></a>
+                    <a href="{% url 'hierarchy_tree' %}" class="sidebar-subitem {% if nav_item == 'hierarchy_tree' %}active{% endif %}" data-route="/employes/arbre"><i class="bi bi-diagram-3"></i><span>Arbre hierarchique</span></a>
+                    {% if utilisateur_connecte.role == "ADMIN" or utilisateur_connecte.role == "RESPONSABLE_RH" %}
+                        <a href="{% url 'position_management' %}" class="sidebar-subitem {% if nav_item == 'position_management' %}active{% endif %}" data-route="/employes/postes"><i class="bi bi-briefcase"></i><span>Gestion des postes</span></a>
+                        <a href="{% url 'formations_admin' %}" class="sidebar-subitem {% if nav_item == 'formations_admin' %}active{% endif %}" data-route="/employes/formations"><i class="bi bi-mortarboard"></i><span>Affectation des formations</span></a>
+                        <a href="{% url 'rh_messages' %}?tab=active" class="sidebar-subitem {% if nav_item == 'rh_support_active' %}active{% endif %}"><i class="bi bi-chat-dots"></i><span>Support RH</span></a>
+                        <a href="{% url 'payroll_analytics' %}" class="sidebar-subitem {% if nav_item == 'payroll_analytics' %}active{% endif %}" data-route="/employes/paie"><i class="bi bi-graph-up-arrow"></i><span>Paie et analyses</span></a>
+                    {% else %}
+                        <a href="{% url 'my_trainings' %}" class="sidebar-subitem {% if nav_item == 'my_trainings' %}active{% endif %}" data-route="/formations"><i class="bi bi-mortarboard"></i><span>Mes formations</span></a>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if utilisateur_connecte.role == "ADMIN" or utilisateur_connecte.role == "RESPONSABLE_RH" %}
+                <div class="sidebar-group" data-group-route="/departements">
+                    <button class="sidebar-item sidebar-parent nav-link {% if nav_module == 'departements' %}active{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#menuDepartements" aria-expanded="{% if nav_module == 'departements' %}true{% else %}false{% endif %}">
+                        <i class="bi bi-buildings"></i><span>Departements</span><i class="bi bi-chevron-down ms-auto"></i>
+                    </button>
+                    <div class="collapse sidebar-submenu {% if nav_module == 'departements' %}show{% endif %}" id="menuDepartements">
+                        <a href="{% url 'departements_list' %}?tab=departements" class="sidebar-subitem {% if nav_item == 'departements_departements' %}active{% endif %}" data-route="/departements"><i class="bi bi-building"></i><span>Departements</span></a>
+                        <a href="{% url 'departements_list' %}?tab=services" class="sidebar-subitem {% if nav_item == 'departements_services' %}active{% endif %}" data-route="/departements"><i class="bi bi-layers"></i><span>Services</span></a>
+                        <a href="{% url 'departements_list' %}?tab=postes" class="sidebar-subitem {% if nav_item == 'departements_postes' %}active{% endif %}" data-route="/departements"><i class="bi bi-briefcase"></i><span>Postes</span></a>
+                    </div>
+                </div>
+            {% endif %}
+
+            <a href="{% url 'conges_list' %}" class="sidebar-item nav-link" data-route="/conges"><i class="bi bi-calendar2-check"></i><span>Conges & Absences</span></a>
+            <a href="{% url 'demandes_list' %}" class="sidebar-item nav-link" data-route="/demandes"><i class="bi bi-file-earmark-text"></i><span>Demandes administratives</span></a>
+            <a href="{% url 'attendance' %}" class="sidebar-item nav-link" data-route="/pointage"><i class="bi bi-clock-history"></i><span>Presence / Pointage</span></a>
+            <div class="sidebar-group" data-group-route="/planning">
+                <button class="sidebar-item sidebar-parent nav-link {% if nav_module == 'planning' %}active{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#menuPlanning" aria-expanded="{% if nav_module == 'planning' %}true{% else %}false{% endif %}">
+                    <i class="bi bi-calendar-week"></i><span>Planning</span><i class="bi bi-chevron-down ms-auto"></i>
+                </button>
+                <div class="collapse sidebar-submenu {% if nav_module == 'planning' %}show{% endif %}" id="menuPlanning">
+                    <a href="{% url 'planning' %}?tab=overview" class="sidebar-subitem {% if nav_item == 'planning_overview' %}active{% endif %}"><i class="bi bi-speedometer2"></i><span>Overview</span></a>
+                    <a href="{% url 'planning' %}?tab=calendar" class="sidebar-subitem {% if nav_item == 'planning_calendar' %}active{% endif %}"><i class="bi bi-calendar3"></i><span>Calendar</span></a>
+                    <a href="{% url 'planning' %}?tab=daily" class="sidebar-subitem {% if nav_item == 'planning_daily' %}active{% endif %}"><i class="bi bi-calendar-day"></i><span>Daily</span></a>
+                    <a href="{% url 'planning' %}?tab=weekly" class="sidebar-subitem {% if nav_item == 'planning_weekly' %}active{% endif %}"><i class="bi bi-calendar-week"></i><span>Weekly</span></a>
+                    <a href="{% url 'planning' %}?tab=biweekly" class="sidebar-subitem {% if nav_item == 'planning_biweekly' %}active{% endif %}"><i class="bi bi-calendar2-range"></i><span>Bi-weekly</span></a>
+                    <a href="{% url 'planning' %}?tab=monthly" class="sidebar-subitem {% if nav_item == 'planning_monthly' %}active{% endif %}"><i class="bi bi-calendar-month"></i><span>Monthly</span></a>
+                    <a href="{% url 'planning' %}?tab=timesheets" class="sidebar-subitem {% if nav_item == 'planning_timesheets' %}active{% endif %}"><i class="bi bi-clock"></i><span>Timesheets</span></a>
+                    <a href="{% url 'planning' %}?tab=shifts" class="sidebar-subitem {% if nav_item == 'planning_shifts' %}active{% endif %}"><i class="bi bi-calendar-plus"></i><span>Shift Management</span></a>
+                    <a href="{% url 'planning' %}?tab=attendance" class="sidebar-subitem {% if nav_item == 'planning_attendance' %}active{% endif %}"><i class="bi bi-person-check"></i><span>Attendance</span></a>
+                    <a href="{% url 'planning' %}?tab=leave" class="sidebar-subitem {% if nav_item == 'planning_leave' %}active{% endif %}"><i class="bi bi-calendar2-check"></i><span>Time Off</span></a>
+                    <a href="{% url 'planning' %}?tab=tasks" class="sidebar-subitem {% if nav_item == 'planning_tasks' %}active{% endif %}"><i class="bi bi-list-check"></i><span>Tasks</span></a>
+                    <a href="{% url 'planning' %}?tab=reports" class="sidebar-subitem {% if nav_item == 'planning_reports' %}active{% endif %}"><i class="bi bi-file-earmark-bar-graph"></i><span>Reports</span></a>
+                    {% if utilisateur_connecte.role == "ADMIN" or utilisateur_connecte.role == "RESPONSABLE_RH" %}
+                        <a href="{% url 'planning' %}?tab=settings" class="sidebar-subitem {% if nav_item == 'planning_settings' %}active{% endif %}"><i class="bi bi-gear"></i><span>Settings</span></a>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="sidebar-group" data-group-route="/taches">
+                <button class="sidebar-item sidebar-parent nav-link {% if nav_module == 'team_tasks' %}active{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#menuTeamTasks" aria-expanded="{% if nav_module == 'team_tasks' %}true{% else %}false{% endif %}">
+                    <i class="bi bi-list-check"></i><span>Taches equipe</span><i class="bi bi-chevron-down ms-auto"></i>
+                </button>
+                <div class="collapse sidebar-submenu {% if nav_module == 'team_tasks' %}show{% endif %}" id="menuTeamTasks">
+                    <a href="{% url 'team_tasks' %}?tab=overview" class="sidebar-subitem {% if nav_item == 'team_tasks_overview' %}active{% endif %}"><i class="bi bi-speedometer2"></i><span>Overview</span></a>
+                    {% if utilisateur_connecte.role == "ADMIN" or utilisateur_connecte.role == "RESPONSABLE_RH" or utilisateur_connecte.role == "RESPONSABLE_HIERARCHIQUE" %}
+                        <a href="{% url 'team_tasks' %}?tab=create" class="sidebar-subitem {% if nav_item == 'team_tasks_create' %}active{% endif %}"><i class="bi bi-plus-square"></i><span>Create Task</span></a>
+                    {% endif %}
+                    <a href="{% url 'team_tasks' %}?tab=open" class="sidebar-subitem {% if nav_item == 'team_tasks_open' %}active{% endif %}"><i class="bi bi-inbox"></i><span>Open Tasks</span></a>
+                    <a href="{% url 'team_tasks' %}?tab=mine" class="sidebar-subitem {% if nav_item == 'team_tasks_mine' %}active{% endif %}"><i class="bi bi-person-check"></i><span>My Tasks</span></a>
+                    {% if utilisateur_connecte.role == "ADMIN" or utilisateur_connecte.role == "RESPONSABLE_RH" or utilisateur_connecte.role == "RESPONSABLE_HIERARCHIQUE" %}
+                        <a href="{% url 'team_tasks' %}?tab=team" class="sidebar-subitem {% if nav_item == 'team_tasks_team' %}active{% endif %}"><i class="bi bi-people"></i><span>Team Follow-up</span></a>
+                        <a href="{% url 'team_tasks' %}?tab=approval" class="sidebar-subitem {% if nav_item == 'team_tasks_approval' %}active{% endif %}"><i class="bi bi-check2-circle"></i><span>Pending Approval</span></a>
+                        <a href="{% url 'team_tasks' %}?tab=points" class="sidebar-subitem {% if nav_item == 'team_tasks_points' %}active{% endif %}"><i class="bi bi-award"></i><span>Points & Rewards</span></a>
+                    {% endif %}
+                    <a href="{% url 'team_tasks' %}?tab=archive" class="sidebar-subitem {% if nav_item == 'team_tasks_archive' %}active{% endif %}"><i class="bi bi-archive"></i><span>Archive</span></a>
+                </div>
+            </div>
+            <div class="sidebar-group" data-group-route="/messages-rh">
+                <button class="sidebar-item sidebar-parent nav-link {% if nav_module == 'rh_support' %}active{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#menuRhSupport" aria-expanded="{% if nav_module == 'rh_support' %}true{% else %}false{% endif %}">
+                    <i class="bi bi-headset"></i><span>Support RH</span><i class="bi bi-chevron-down ms-auto"></i>
+                </button>
+                <div class="collapse sidebar-submenu {% if nav_module == 'rh_support' %}show{% endif %}" id="menuRhSupport">
+                    <a href="{% url 'rh_messages' %}?tab=available" class="sidebar-subitem {% if nav_item == 'rh_support_available' %}active{% endif %}"><i class="bi bi-inbox"></i><span>Non traites</span></a>
+                    <a href="{% url 'rh_messages' %}?tab=handled" class="sidebar-subitem {% if nav_item == 'rh_support_handled' %}active{% endif %}"><i class="bi bi-person-check"></i><span>Mes tickets</span></a>
+                    <a href="{% url 'rh_messages' %}?tab=new" class="sidebar-subitem {% if nav_item == 'rh_support_new' %}active{% endif %}"><i class="bi bi-plus-square"></i><span>Nouveau ticket</span></a>
+                    <a href="{% url 'rh_messages' %}?tab=closed" class="sidebar-subitem {% if nav_item == 'rh_support_closed' %}active{% endif %}"><i class="bi bi-archive"></i><span>Historique</span></a>
+                    {% if utilisateur_connecte.role == "ADMIN" or utilisateur_connecte.role == "RESPONSABLE_RH" %}
+                        <a href="{% url 'rh_messages' %}?tab=ranking" class="sidebar-subitem {% if nav_item == 'rh_support_ranking' %}active{% endif %}"><i class="bi bi-star"></i><span>Classement RH</span></a>
+                    {% endif %}
+                    {% if utilisateur_connecte.role == "ADMIN" or utilisateur_connecte.role == "RESPONSABLE_HIERARCHIQUE" %}
+                        <a href="{% url 'rh_messages' %}?tab=rewards" class="sidebar-subitem {% if nav_item == 'rh_support_rewards' %}active{% endif %}"><i class="bi bi-award"></i><span>Validations</span></a>
+                    {% endif %}
+                </div>
+            </div>
+            <a href="{% url 'news_list' %}" class="sidebar-item nav-link" data-route="/actualites"><i class="bi bi-megaphone"></i><span>Actualites / Newsletter</span></a>
+            <a href="{% url 'shop' %}" class="sidebar-item nav-link" data-route="/boutique"><i class="bi bi-box-seam"></i><span>Boutique / Materiel</span></a>
+            <a href="{% url 'notifications_list' %}" class="sidebar-item nav-link nav-link-with-badge" data-route="/notifications">
+                <i class="bi bi-bell"></i><span>Notifications</span>
+                {% if notifications_non_lues > 0 %}<span class="nav-badge">{{ notifications_non_lues }}</span>{% endif %}
+            </a>
+            {% if utilisateur_connecte.role == "ADMIN" %}
+                <div class="sidebar-group" data-group-route="/admin">
+                    <button class="sidebar-item sidebar-parent nav-link {% if nav_module == 'administration' %}active{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#menuAdministration" aria-expanded="{% if nav_module == 'administration' %}true{% else %}false{% endif %}">
+                        <i class="bi bi-shield-lock"></i><span>Administration</span><i class="bi bi-chevron-down ms-auto"></i>
+                    </button>
+                    <div class="collapse sidebar-submenu {% if nav_module == 'administration' %}show{% endif %}" id="menuAdministration">
+                        <a href="{% url 'admin_dashboard' %}?tab=overview" class="sidebar-subitem {% if nav_item == 'administration_overview' %}active{% endif %}"><i class="bi bi-speedometer2"></i><span>Overview</span></a>
+                        <a href="{% url 'admin_dashboard' %}?tab=account_requests" class="sidebar-subitem {% if nav_item == 'administration_account_requests' %}active{% endif %}"><i class="bi bi-person-plus"></i><span>Demandes comptes</span></a>
+                        <a href="{% url 'admin_dashboard' %}?tab=users" class="sidebar-subitem {% if nav_item == 'administration_users' %}active{% endif %}"><i class="bi bi-people"></i><span>Utilisateurs & roles</span></a>
+                        <a href="{% url 'admin_dashboard' %}?tab=permissions" class="sidebar-subitem {% if nav_item == 'administration_permissions' %}active{% endif %}"><i class="bi bi-key"></i><span>Permissions</span></a>
+                        <a href="{% url 'admin_dashboard' %}?tab=edit_requests" class="sidebar-subitem {% if nav_item == 'administration_edit_requests' %}active{% endif %}"><i class="bi bi-database-gear"></i><span>Modifications</span></a>
+                        <a href="{% url 'admin_dashboard' %}?tab=audit" class="sidebar-subitem {% if nav_item == 'administration_audit' %}active{% endif %}"><i class="bi bi-activity"></i><span>Audit logs</span></a>
+                        <a href="{% url 'admin_dashboard' %}?tab=settings" class="sidebar-subitem {% if nav_item == 'administration_settings' %}active{% endif %}"><i class="bi bi-gear"></i><span>Settings</span></a>
+                        <a href="{% url 'admin_dashboard' %}?tab=security" class="sidebar-subitem {% if nav_item == 'administration_security' %}active{% endif %}"><i class="bi bi-shield-exclamation"></i><span>Security</span></a>
+                        <a href="{% url 'admin_dashboard' %}?tab=reports" class="sidebar-subitem {% if nav_item == 'administration_reports' %}active{% endif %}"><i class="bi bi-file-earmark-bar-graph"></i><span>Reports</span></a>
+                    </div>
+                </div>
+            {% endif %}
+            {% if utilisateur_connecte.role == "ADMIN" or utilisateur_connecte.role == "RESPONSABLE_RH" %}
+                <a href="{% url 'manual_points' %}" class="sidebar-item nav-link" data-route="/points"><i class="bi bi-plus-slash-minus"></i><span>Correction points</span></a>
+            {% endif %}
+        </nav>
+
+        <div class="sidebar-user">
+            <div class="user-avatar"><span>{{ utilisateur_connecte.employe.prenom|first|default:"U" }}</span></div>
+            <div class="user-meta">
+                <div class="user-name">{{ utilisateur_connecte.employe.nom_complet|default:"Utilisateur" }}</div>
+                <div class="user-role">{{ utilisateur_connecte.role|default:"Session" }}</div>
+            </div>
+            <form action="{% url 'logout' %}" method="post" class="ms-auto">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-rh-icon" title="Se deconnecter"><i class="bi bi-box-arrow-right"></i></button>
+            </form>
+        </div>
+    </aside>
+
+    <main id="main-content" class="app-main">
+        <nav class="app-topbar">
+            <button class="btn btn-rh-icon d-md-none" id="sidebarToggle" type="button" title="Menu"><i class="bi bi-list"></i></button>
+            <div class="page-header">
+                <div class="breadcrumb-line">
+                    <a href="{% url 'dashboard' %}">Accueil</a>
+                    <i class="bi bi-chevron-right"></i>
+                    <span>{{ page_title|default:"Page" }}</span>
+                </div>
+                <h1 class="page-title">{{ page_title|default:"Page" }}</h1>
+            </div>
+            <div class="topbar-actions">
+                <span class="role-pill">{{ utilisateur_connecte.role|default:"Utilisateur" }}</span>
+                <a href="{% url 'notifications_list' %}" class="btn btn-rh-icon position-relative" title="Notifications">
+                    <i class="bi bi-bell"></i>
+                    {% if notifications_non_lues > 0 %}<span class="topbar-badge">{{ notifications_non_lues }}</span>{% endif %}
+                </a>
+            </div>
+        </nav>
+
+        <div class="app-content">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags|bootstrap_alert }} alert-dismissible fade show flash-message rh-alert" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
+                </div>
+            {% endfor %}
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{% static 'js/main.js' %}?v=premium-rh-saas-1"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>
+

@@ -1,0 +1,53 @@
+<div class="task-card-list">
+{% for task in tasks %}
+    <article class="task-card priority-{{ task.priorite }}">
+        <div class="task-card-main">
+            <div class="task-card-title">
+                <strong>{{ task.titre }}</strong>
+                <span class="status-badge status-{{ task.statut }}">{{ task.get_statut_display }}</span>
+            </div>
+            <p>{{ task.description|truncatechars:180 }}</p>
+            <div class="task-meta">
+                <span><i class="bi bi-flag"></i> {{ task.get_priorite_display }}</span>
+                <span><i class="bi bi-person"></i> {{ task.assignee.nom_complet|default:"Equipe ouverte" }}</span>
+                <span><i class="bi bi-calendar-event"></i> {{ task.date_limite|date:"d/m/Y H:i"|default:"Sans deadline" }}</span>
+                {% if task.is_overdue %}<span class="text-danger"><i class="bi bi-exclamation-triangle"></i> En retard</span>{% endif %}
+            </div>
+            {% if task.message_completion %}<div class="task-note"><strong>Soumission:</strong> {{ task.message_completion }}</div>{% endif %}
+            {% if task.feedback_manager %}<div class="task-note"><strong>Feedback:</strong> {{ task.feedback_manager }}</div>{% endif %}
+            {% if task.points_attribues %}<div class="task-note"><strong>Points attribues:</strong> {{ task.points_attribues }}</div>{% endif %}
+        </div>
+        <div class="task-card-actions">
+            {% if show_accept and task.statut == "ouverte" %}
+                <form method="post" action="{% url 'task_status' task.pk %}">{% csrf_token %}<button name="action" value="accept" class="btn btn-sm btn-accent">Accepter</button></form>
+            {% endif %}
+            {% if show_employee_actions %}
+                {% if task.statut == "acceptee" or task.statut == "a_faire" or task.statut == "changements" %}
+                    <form method="post" action="{% url 'task_status' task.pk %}">{% csrf_token %}<button name="action" value="start" class="btn btn-sm btn-outline-dark">Demarrer</button></form>
+                {% endif %}
+                {% if task.statut == "en_cours" or task.statut == "changements" %}
+                    <form method="post" action="{% url 'task_status' task.pk %}" class="task-inline-form">
+                        {% csrf_token %}
+                        <textarea name="message_completion" class="form-control form-control-sm" rows="2" placeholder="Message de completion..."></textarea>
+                        <button name="action" value="submit" class="btn btn-sm btn-accent">Soumettre</button>
+                    </form>
+                {% endif %}
+            {% endif %}
+            {% if show_manager_actions and task.statut == "soumise" %}
+                <form method="post" action="{% url 'task_status' task.pk %}" class="task-inline-form">
+                    {% csrf_token %}
+                    <textarea name="feedback_manager" class="form-control form-control-sm" rows="2" placeholder="Feedback manager..."></textarea>
+                    <input name="points" class="form-control form-control-sm" type="number" min="0" max="30" value="{{ task.points_suggeres }}">
+                    <div class="d-flex gap-1 flex-wrap">
+                        <button name="action" value="approve" class="btn btn-sm btn-success">Approuver</button>
+                        <button name="action" value="changes" class="btn btn-sm btn-outline-secondary">Changements</button>
+                        <button name="action" value="reject" class="btn btn-sm btn-outline-danger">Rejeter</button>
+                    </div>
+                </form>
+            {% endif %}
+        </div>
+    </article>
+{% empty %}
+    <div class="empty-state">{{ empty }}</div>
+{% endfor %}
+</div>

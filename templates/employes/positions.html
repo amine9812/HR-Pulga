@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="panel">
+    <div class="panel-header"><div><h3>Gestion des postes</h3><p class="text-soft">Promotions, affectations, departements et responsables directs.</p></div></div>
+    <form class="filter-row" method="get">
+        <input name="search" class="form-control" placeholder="Rechercher un employe, matricule ou email" value="{{ search }}">
+        <select name="departement" class="form-select"><option value="">Tous les departements</option>{% for d in departements %}<option value="{{ d.id }}">{{ d.libelle }}</option>{% endfor %}</select>
+        <select name="poste" class="form-select"><option value="">Tous les postes</option>{% for p in postes %}<option value="{{ p.id }}">{{ p.libelle }}</option>{% endfor %}</select>
+        <button class="btn btn-accent">Filtrer</button>
+    </form>
+    <div class="table-responsive compact-panel"><table class="table table-compact align-middle">
+        <thead><tr><th>Employe</th><th>Poste actuel</th><th>Departement</th><th>Responsable direct</th><th>Niveau</th><th>Anciennete</th><th>Statut</th><th>Actions</th></tr></thead>
+        <tbody>{% for e in employes %}<tr>
+            <td>{{ e.nom_complet }}</td><td>{{ e.poste|default:"-" }}</td><td>{{ e.departement|default:"-" }}</td><td>{{ e.responsable|default:"-" }}</td>
+            <td>{{ e.poste.niveau|default:"-" }}</td><td>{{ e.anciennete_annees }} an(s)</td><td>{% if e.actif %}Actif{% else %}Archive{% endif %}</td>
+            <td><a class="btn btn-sm btn-accent" href="{% url 'position_edit' e.id %}">Modifier</a></td>
+        </tr>{% empty %}<tr><td colspan="8" class="empty-state">Aucun resultat.</td></tr>{% endfor %}</tbody>
+    </table></div>
+</div>
+{% endblock %}

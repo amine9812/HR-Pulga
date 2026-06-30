@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="panel department-shell">
+    <div class="panel-header">
+        <div>
+            <h3>Organisation interne</h3>
+            <p class="text-soft">Maintenez les departements, services, postes et niveaux utilises par les fiches employes.</p>
+        </div>
+        <a class="btn btn-accent btn-compact" href="?tab=creation"><i class="bi bi-plus-lg"></i> Creation</a>
+    </div>
+
+    <ul class="nav module-tabs department-tabs" role="tablist">
+        <li class="nav-item"><a class="nav-link {% if active_tab == 'departements' %}active{% endif %}" href="?tab=departements" aria-current="{% if active_tab == 'departements' %}page{% endif %}">Departements</a></li>
+        <li class="nav-item"><a class="nav-link {% if active_tab == 'services' %}active{% endif %}" href="?tab=services" aria-current="{% if active_tab == 'services' %}page{% endif %}">Services</a></li>
+        <li class="nav-item"><a class="nav-link {% if active_tab == 'postes' %}active{% endif %}" href="?tab=postes" aria-current="{% if active_tab == 'postes' %}page{% endif %}">Postes</a></li>
+        <li class="nav-item"><a class="nav-link {% if active_tab == 'creation' %}active{% endif %}" href="?tab=creation" aria-current="{% if active_tab == 'creation' %}page{% endif %}">Creation</a></li>
+    </ul>
+
+    {% if active_tab == 'departements' %}
+        <div class="compact-panel">
+            <table class="table table-compact align-middle">
+                <thead><tr><th>Libelle</th><th>Description</th><th class="text-end">Actions</th></tr></thead>
+                <tbody>
+                {% for item in departements %}
+                    <tr>
+                        <td><strong>{{ item.libelle }}</strong></td>
+                        <td>{{ item.description|default:"-" }}</td>
+                        <td class="text-end">
+                            <form method="post" action="{% url 'departement_delete' item.id %}" class="confirm-delete d-inline">{% csrf_token %}
+                                <button class="btn btn-sm btn-outline-danger" title="Supprimer"><i class="bi bi-trash"></i></button>
+                            </form>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="3" class="empty-state">Aucun departement. Utilisez l'onglet Creation pour en ajouter un.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% elif active_tab == 'services' %}
+        <div class="compact-panel">
+            <table class="table table-compact align-middle">
+                <thead><tr><th>Service</th><th>Departement</th><th>Description</th><th class="text-end">Actions</th></tr></thead>
+                <tbody>
+                {% for item in services %}
+                    <tr>
+                        <td><strong>{{ item.libelle }}</strong></td>
+                        <td>{{ item.departement|default:"Departement non defini" }}</td>
+                        <td>{{ item.description|default:"-" }}</td>
+                        <td class="text-end">
+                            <form method="post" action="{% url 'service_delete' item.id %}" class="confirm-delete d-inline">{% csrf_token %}
+                                <button class="btn btn-sm btn-outline-danger" title="Supprimer"><i class="bi bi-trash"></i></button>
+                            </form>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="4" class="empty-state">Aucun service. Creez d'abord un departement si necessaire.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% elif active_tab == 'postes' %}
+        <div class="compact-panel">
+            <table class="table table-compact align-middle">
+                <thead><tr><th>Poste</th><th>Niveau</th><th>Rang</th><th>Manager</th><th>Direction</th><th class="text-end">Actions</th></tr></thead>
+                <tbody>
+                {% for item in postes %}
+                    <tr>
+                        <td><strong>{{ item.libelle }}</strong></td>
+                        <td>{{ item.niveau|default:"-" }}</td>
+                        <td>{{ item.rang_hierarchique }}</td>
+                        <td>{% if item.est_manager %}Oui{% else %}Non{% endif %}</td>
+                        <td>{% if item.est_direction %}Oui{% else %}Non{% endif %}</td>
+                        <td class="text-end">
+                            <form method="post" action="{% url 'poste_delete' item.id %}" class="confirm-delete d-inline">{% csrf_token %}
+                                <button class="btn btn-sm btn-outline-danger" title="Supprimer"><i class="bi bi-trash"></i></button>
+                            </form>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="6" class="empty-state">Aucun poste. Utilisez l'onglet Creation pour structurer les roles.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="department-creation-grid">
+            <form class="department-create-card" method="post" action="{% url 'departement_save' %}">
+                {% csrf_token %}
+                <div class="creation-card-head">
+                    <span class="creation-icon"><i class="bi bi-building"></i></span>
+                    <div><h4>Departement</h4><p>Creez une grande unite d'organisation.</p></div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-12">{{ departement_form.libelle.label_tag }}{{ departement_form.libelle }}</div>
+                    <div class="col-12">{{ departement_form.description.label_tag }}{{ departement_form.description }}</div>
+                </div>
+                <button class="btn btn-accent w-100 mt-3"><i class="bi bi-plus-lg"></i> Creer le departement</button>
+            </form>
+
+            <form class="department-create-card" method="post" action="{% url 'service_save' %}">
+                {% csrf_token %}
+                <div class="creation-card-head">
+                    <span class="creation-icon"><i class="bi bi-diagram-3"></i></span>
+                    <div><h4>Service</h4><p>Rattachez une equipe operationnelle a un departement.</p></div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-12">{{ service_form.libelle.label_tag }}{{ service_form.libelle }}</div>
+                    <div class="col-12">{{ service_form.departement.label_tag }}{{ service_form.departement }}</div>
+                    <div class="col-12">{{ service_form.description.label_tag }}{{ service_form.description }}</div>
+                </div>
+                <button class="btn btn-accent w-100 mt-3"><i class="bi bi-plus-lg"></i> Creer le service</button>
+            </form>
+
+            <form class="department-create-card department-create-card--wide" method="post" action="{% url 'poste_save' %}">
+                {% csrf_token %}
+                <div class="creation-card-head">
+                    <span class="creation-icon"><i class="bi bi-person-badge"></i></span>
+                    <div><h4>Poste et niveau</h4><p>Definissez un role, son niveau et sa place hierarchique.</p></div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-6">{{ poste_form.libelle.label_tag }}{{ poste_form.libelle }}</div>
+                    <div class="col-md-6">
+                        {{ poste_form.niveau.label_tag }}{{ poste_form.niveau }}
+                        <datalist id="niveau-options">
+                            {% for niveau in niveaux %}<option value="{{ niveau }}"></option>{% endfor %}
+                        </datalist>
+                        <small class="text-soft">Selectionnez un niveau existant ou saisissez un nouveau niveau.</small>
+                    </div>
+                    <div class="col-md-4">{{ poste_form.rang_hierarchique.label_tag }}{{ poste_form.rang_hierarchique }}</div>
+                    <div class="col-md-4 creation-check">{{ poste_form.est_manager }} <label for="{{ poste_form.est_manager.id_for_label }}">Manager</label></div>
+                    <div class="col-md-4 creation-check">{{ poste_form.est_direction }} <label for="{{ poste_form.est_direction.id_for_label }}">Direction</label></div>
+                    <div class="col-12">{{ poste_form.description.label_tag }}{{ poste_form.description }}</div>
+                </div>
+                {% if not niveaux %}<div class="empty-state mt-3">Aucun niveau existant pour le moment. Le premier niveau saisi sera propose ensuite.</div>{% endif %}
+                <button class="btn btn-accent w-100 mt-3"><i class="bi bi-plus-lg"></i> Creer le poste</button>
+            </form>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

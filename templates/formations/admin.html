@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="panel">
+    <ul class="nav module-tabs" role="tablist">
+        <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-affecter" type="button">Affecter une formation</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-nouvelle" type="button">Nouvelle formation</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-restantes" type="button">Affectations restantes</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-logs" type="button">Journal / Logs</button></li>
+    </ul>
+    <div class="tab-content">
+        <div class="tab-pane fade show active" id="tab-affecter">
+            <form method="post" class="form-panel border-0 shadow-none p-0">{% csrf_token %}<h3 class="form-section-title">Affecter une formation</h3>{% include "includes/form_fields.html" %}<div class="form-actions"><button class="btn btn-accent">Affecter</button></div></form>
+        </div>
+        <div class="tab-pane fade" id="tab-nouvelle">
+            <form method="post" action="{% url 'formation_create' %}" class="form-panel border-0 shadow-none p-0">{% csrf_token %}<h3 class="form-section-title">Nouvelle formation</h3>{% include "includes/form_fields.html" with form=formation_form %}<div class="form-actions"><button class="btn btn-accent">Creer</button></div></form>
+        </div>
+        <div class="tab-pane fade" id="tab-restantes">
+            <div class="compact-panel"><table class="table table-compact"><thead><tr><th>Formation</th><th>Employe</th><th>Statut</th><th>Date limite</th><th>Action RH</th></tr></thead><tbody>{% for a in affectations %}<tr><td>{{ a.formation.titre }}</td><td>{{ a.employe.nom_complet }}</td><td>{{ a.statut }}</td><td>{{ a.date_limite|default:"-" }}</td><td><form method="post" action="{% url 'formation_assignment_status' a.id %}">{% csrf_token %}<select name="statut" class="form-select form-select-sm d-inline w-auto"><option value="assignee" {% if a.statut == "assignee" %}selected{% endif %}>Assignee</option><option value="en_cours" {% if a.statut == "en_cours" %}selected{% endif %}>En cours</option><option value="terminee" {% if a.statut == "terminee" %}selected{% endif %}>Terminee</option><option value="en_retard" {% if a.statut == "en_retard" %}selected{% endif %}>En retard</option><option value="annulee" {% if a.statut == "annulee" %}selected{% endif %}>Annulee</option></select><button class="btn btn-sm btn-accent">OK</button></form></td></tr>{% empty %}<tr><td colspan="5" class="empty-state">Aucune affectation.</td></tr>{% endfor %}</tbody></table></div>
+        </div>
+        <div class="tab-pane fade" id="tab-logs">
+            <div class="compact-panel"><table class="table table-compact"><thead><tr><th>Formation</th><th>Employe</th><th>Statut</th><th>Completion</th><th>Points</th></tr></thead><tbody>{% for a in affectations %}<tr><td>{{ a.formation.titre }}</td><td>{{ a.employe.nom_complet }}</td><td>{{ a.statut }}</td><td>{{ a.date_completion|default:"-" }}</td><td>{% if a.points_attribues %}Attribues{% else %}Non attribues{% endif %}</td></tr>{% empty %}<tr><td colspan="5" class="empty-state">Aucun journal.</td></tr>{% endfor %}</tbody></table></div>
+        </div>
+    </div>
+</div>
+{% endblock %}

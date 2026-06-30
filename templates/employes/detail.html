@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="profile-card mb-3">
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+        {% if employe.photo %}<img class="profile-avatar" src="{{ employe.photo.url }}" alt="">{% else %}<div class="profile-avatar">{{ employe.prenom|first }}{{ employe.nom|first }}</div>{% endif %}
+        <div>
+            <h2 class="mb-1">{{ employe.nom_complet }}</h2>
+            <p class="text-soft mb-0">{{ employe.matricule }} · {{ employe.poste|default:"Poste non defini" }}</p>
+        </div>
+        <div class="ms-auto mini-actions">
+            {% if utilisateur_connecte.role == "ADMIN" or utilisateur_connecte.role == "RESPONSABLE_RH" %}
+                <a href="{% url 'employe_update' employe.id %}" class="btn btn-outline-secondary"><i class="bi bi-pencil"></i> Modifier</a>
+                <form method="post" action="{% url 'employe_archive' employe.id %}" class="confirm-archive d-inline">{% csrf_token %}<button class="btn btn-outline-danger"><i class="bi bi-archive"></i> Archiver</button></form>
+            {% endif %}
+        </div>
+    </div>
+    <hr>
+    <div class="row g-3">
+        <div class="col-md-4"><strong>Email</strong><div>{{ employe.email }}</div></div>
+        <div class="col-md-4"><strong>Telephone</strong><div>{{ employe.telephone|default:"-" }}</div></div>
+        <div class="col-md-4"><strong>Departement</strong><div>{{ employe.departement|default:"-" }}</div></div>
+        <div class="col-md-4"><strong>Service</strong><div>{{ employe.service|default:"-" }}</div></div>
+        <div class="col-md-4"><strong>Responsable</strong><div>{{ employe.responsable|default:"-" }}</div></div>
+        <div class="col-md-4"><strong>Embauche</strong><div>{{ employe.date_embauche }}</div></div>
+    </div>
+</div>
+{% if utilisateur_connecte.role == "ADMIN" or utilisateur_connecte.role == "RESPONSABLE_RH" %}
+<form class="form-panel mb-3" method="post" action="{% url 'employe_photo' employe.id %}" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="row g-2 align-items-end">
+        <div class="col-md-9"><label class="form-label">Mettre a jour la photo</label><input class="form-control" type="file" name="photoFile" accept="image/*" required></div>
+        <div class="col-md-3"><button class="btn btn-accent w-100">Televerser</button></div>
+    </div>
+</form>
+{% endif %}
+<div class="row g-3">
+    <div class="col-lg-6"><div class="panel"><h3>Conges</h3>{% for conge in conges %}<div class="request-item"><div><strong>{{ conge.type }}</strong><small>{{ conge.date_debut }} - {{ conge.date_fin }}</small></div><span class="status-badge status-{{ conge.statut }}">{{ conge.statut }}</span></div>{% empty %}<div class="empty-state">Aucun conge.</div>{% endfor %}</div></div>
+    <div class="col-lg-6"><div class="panel"><h3>Documents</h3>{% for document in documents %}<div class="request-item"><div><strong>{{ document.nom_original }}</strong><small>{{ document.categorie }}</small></div><a href="{% url 'document_download' document.id %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-download"></i></a></div>{% empty %}<div class="empty-state">Aucun document.</div>{% endfor %}</div></div>
+</div>
+{% endblock %}

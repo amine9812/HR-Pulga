@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="panel">
+    <ul class="nav module-tabs">
+        {% if utilisateur_connecte.role == "ADMIN" or utilisateur_connecte.role == "RESPONSABLE_RH" %}
+            <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#rec-traiter" type="button">Reclamations a traiter</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#rec-cours" type="button">En cours</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#rec-traitees" type="button">Traitees</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#rec-historique" type="button">Historique</button></li>
+        {% else %}
+            <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#rec-nouvelle" type="button">Nouvelle reclamation</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#rec-mes" type="button">Mes reclamations</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#rec-reponses" type="button">Reponses RH</button></li>
+        {% endif %}
+    </ul>
+    <div class="tab-content">
+        <div class="tab-pane fade {% if utilisateur_connecte.role == 'ADMIN' or utilisateur_connecte.role == 'RESPONSABLE_RH' %}show active{% endif %}" id="rec-traiter">{% include "reclamations/table.html" with reclamations=reclamations mode="a_traiter" %}</div>
+        <div class="tab-pane fade" id="rec-cours">{% include "reclamations/table.html" with reclamations=reclamations mode="en_cours" %}</div>
+        <div class="tab-pane fade" id="rec-traitees">{% include "reclamations/table.html" with reclamations=reclamations mode="traitees" %}</div>
+        <div class="tab-pane fade" id="rec-historique">{% include "reclamations/table.html" with reclamations=reclamations mode="historique" %}</div>
+        <div class="tab-pane fade {% if utilisateur_connecte.role != 'ADMIN' and utilisateur_connecte.role != 'RESPONSABLE_RH' %}show active{% endif %}" id="rec-nouvelle"><form method="post" action="{% url 'reclamation_create' %}" class="form-panel border-0 shadow-none p-0">{% csrf_token %}<h3 class="form-section-title">Nouvelle reclamation</h3>{% include "includes/form_fields.html" %}<div class="form-actions"><button class="btn btn-accent">Envoyer</button></div></form></div>
+        <div class="tab-pane fade" id="rec-mes">{% include "reclamations/table.html" with reclamations=reclamations mode="historique" %}</div>
+        <div class="tab-pane fade" id="rec-reponses">{% include "reclamations/table.html" with reclamations=reclamations mode="traitees" %}</div>
+    </div>
+</div>
+{% endblock %}

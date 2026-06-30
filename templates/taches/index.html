@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block content %}
+{% if active_tab == "overview" %}
+<div class="command-grid mb-3">
+    <div class="metric-tile tile-blue"><span>Total visible</span><strong>{{ overview.total }}</strong><small>Taches</small></div>
+    <div class="metric-tile tile-coral"><span>Urgentes</span><strong>{{ overview.urgent }}</strong><small>A suivre</small></div>
+    <div class="metric-tile tile-yellow"><span>En retard</span><strong>{{ overview.overdue }}</strong><small>Deadline depassee</small></div>
+    <div class="metric-tile tile-lime"><span>Terminees</span><strong>{{ overview.completed }}</strong><small>Validees</small></div>
+</div>
+<div class="panel"><div class="panel-header"><h3>Actions en attente</h3></div>{% include "taches/task_cards.html" with tasks=pending_approval empty="Aucune tache en attente d'approbation." %}</div>
+{% elif active_tab == "create" and can_manage %}
+<div class="form-panel">
+    <div class="panel-header"><div><h3>Creer une tache</h3><p class="mb-0 text-soft">Affectation directe, equipe ou tache ouverte.</p></div></div>
+    <form method="post" action="{% url 'task_create' %}" class="row g-3">
+        {% csrf_token %}
+        <div class="col-12"><div class="empty-state text-start mb-0">Les listes Departement, Service et Employe sont limitees a votre perimetre manager. Les taches "Toute l'equipe" creent une tache visible pour chaque collaborateur eligible.</div></div>
+        <div class="col-md-5">{{ form.titre.label_tag }}{{ form.titre }}</div>
+        <div class="col-md-3">{{ form.mode_affectation.label_tag }}{{ form.mode_affectation }}</div>
+        <div class="col-md-2">{{ form.priorite.label_tag }}{{ form.priorite }}</div>
+        <div class="col-md-2">{{ form.taille.label_tag }}{{ form.taille }}</div>
+        <div class="col-md-3">{{ form.departement.label_tag }}{{ form.departement }}</div>
+        <div class="col-md-3">{{ form.service.label_tag }}{{ form.service }}</div>
+        <div class="col-md-3">{{ form.employe.label_tag }}{{ form.employe }}</div>
+        <div class="col-md-3">{{ form.shift.label_tag }}{{ form.shift }}</div>
+        <div class="col-md-3">{{ form.date_debut.label_tag }}{{ form.date_debut }}</div>
+        <div class="col-md-3">{{ form.date_fin.label_tag }}{{ form.date_fin }}</div>
+        <div class="col-md-3">{{ form.date_limite.label_tag }}{{ form.date_limite }}</div>
+        <div class="col-md-3">{{ form.auto_assign_at.label_tag }}{{ form.auto_assign_at }}</div>
+        <div class="col-md-3">{{ form.max_acceptations.label_tag }}{{ form.max_acceptations }}</div>
+        <div class="col-12">{{ form.description.label_tag }}{{ form.description }}</div>
+        <div class="col-12"><button class="btn btn-accent"><i class="bi bi-list-check"></i> Creer la tache</button></div>
+    </form>
+</div>
+{% elif active_tab == "open" %}
+<div class="panel"><div class="panel-header"><h3>Taches ouvertes</h3></div>{% include "taches/task_cards.html" with tasks=open_tasks empty="Aucune tache ouverte pour le moment." show_accept=True %}</div>
+{% elif active_tab == "mine" %}
+<div class="panel"><div class="panel-header"><h3>Mes taches</h3></div>{% include "taches/task_cards.html" with tasks=my_tasks empty="Aucune tache personnelle." show_employee_actions=True %}</div>
+{% elif active_tab == "team" and can_manage %}
+<div class="panel"><div class="panel-header"><h3>Suivi equipe</h3></div>{% include "taches/task_cards.html" with tasks=team_followup empty="Aucune tache equipe." %}</div>
+{% elif active_tab == "approval" and can_manage %}
+<div class="panel"><div class="panel-header"><h3>Validation manager</h3></div>{% include "taches/task_cards.html" with tasks=pending_approval empty="Aucune soumission a valider." show_manager_actions=True %}</div>
+{% elif active_tab == "points" and can_manage %}
+<div class="command-grid mb-3">
+    <div class="metric-tile tile-blue"><span>Budget mensuel</span><strong>{{ points_budget }}</strong><small>points</small></div>
+    <div class="metric-tile tile-yellow"><span>Utilises</span><strong>{{ points_used }}</strong><small>ce mois</small></div>
+    <div class="metric-tile tile-lime"><span>Restants</span><strong>{{ points_remaining }}</strong><small>max {{ task_point_max }} / tache</small></div>
+</div>
+<div class="panel"><div class="empty-state">Les points sont attribues au moment de l'approbation d'une tache soumise.</div></div>
+{% else %}
+<div class="panel"><div class="panel-header"><h3>Archive</h3></div>{% include "taches/task_cards.html" with tasks=archive empty="Aucune tache archivee." %}</div>
+{% endif %}
+{% endblock %}

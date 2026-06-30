@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="rh-stat-grid mb-3">
+    <div class="rh-stat-card success">
+        <i class="bi bi-person-check"></i>
+        <span>Presences aujourd'hui</span>
+        <strong>{{ today_pointages_count }}</strong>
+        <small>{{ planned_today_count }} shift(s) planifie(s)</small>
+    </div>
+    <div class="rh-stat-card danger">
+        <i class="bi bi-alarm"></i>
+        <span>Retards aujourd'hui</span>
+        <strong>{{ today_retards_count }}</strong>
+        <small>Selon le shift Planning associe</small>
+    </div>
+    <div class="rh-stat-card warning">
+        <i class="bi bi-hourglass-split"></i>
+        <span>Pointages ouverts</span>
+        <strong>{{ today_open_count }}</strong>
+        <small>Sortie non encore pointee</small>
+    </div>
+    <div class="rh-stat-card info">
+        <i class="bi bi-clock-history"></i>
+        <span>Heures enregistrees</span>
+        <strong>{{ today_total_hours|floatformat:1 }}</strong>
+        <small>Total visible aujourd'hui</small>
+    </div>
+</div>
+
+<div class="rh-card mb-3">
+    <div class="rh-card-header">
+        <div>
+            <span class="eyebrow">Mon pointage</span>
+            <h3>Entree et sortie du jour</h3>
+            <p class="text-soft mb-0">
+                {% if shift_today %}
+                    Shift planifie : {{ shift_today.titre }} de {{ shift_today.date_debut|date:"H:i" }} a {% if shift_today.effective_end_time %}{{ shift_today.effective_end_time|time:"H:i" }}{% else %}--{% endif %}.
+                {% else %}
+                    Aucun shift publie pour vous aujourd'hui. Le calcul utilise un fallback securise et signale l'absence de reference Planning.
+                {% endif %}
+            </p>
+        </div>
+        <div class="hero-actions">
+            <form method="post" action="{% url 'attendance_checkin' %}" class="d-inline">
+                {% csrf_token %}
+                <button class="btn btn-rh-primary"><i class="bi bi-box-arrow-in-right"></i> Pointer l'entree</button>
+            </form>
+            <form method="post" action="{% url 'attendance_checkout' %}" class="d-inline">
+                {% csrf_token %}
+                <button class="btn btn-rh-secondary"><i class="bi bi-box-arrow-right"></i> Pointer la sortie</button>
+            </form>
+        </div>
+    </div>
+    <div class="request-item">
+        <div>
+            <strong>Statut personnel aujourd'hui</strong>
+            <small>
+                {% if today %}
+                    Entree {{ today.heure_entree|date:"H:i" }} · Sortie {{ today.heure_sortie|date:"H:i"|default:"-" }} · {{ today.total_heures }} h
+                {% else %}
+                    Aucun pointage personnel enregistre aujourd'hui.
+                {% endif %}
+            </small>
+        </div>
+        {% if today %}<span class="status-badge status-{{ today.statut }}">{{ today.get_statut_display }}</span>{% else %}<span class="status-badge status-EN_ATTENTE">Non pointe</span>{% endif %}
+    </div>
+</div>
+
+<div class="rh-card">
+    <div class="rh-card-header">
+        <div>
+            <span class="eyebrow">Suivi de presence</span>
+            <h3>Historique de pointage</h3>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-compact align-middle">
+            <thead>
+                <tr><th>Employe</th><th>Date</th><th>Shift</th><th>Entree</th><th>Sortie</th><th>Heures</th><th>Statut</th><th>Points</th></tr>
+            </thead>
+            <tbody>
+                {% for p in pointages %}
+                    <tr>
+                        <td>{{ p.employe.nom_complet }}</td>
+                        <td>{{ p.date }}</td>
+                        <td>{{ p.shift.titre|default:"Non planifie" }}</td>
+                        <td>{{ p.heure_entree|date:"H:i" }}</td>
+                        <td>{{ p.heure_sortie|date:"H:i"|default:"-" }}</td>
+                        <td>{{ p.total_heures }}</td>
+                        <td><span class="status-badge status-{{ p.statut }}">{{ p.get_statut_display }}</span></td>
+                        <td>{{ p.points_calcules }}</td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="8" class="empty-state">Aucun pointage.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,4 @@
+{% extends "base.html" %}
+{% block content %}
+<form method="post" class="form-panel">{% csrf_token %}<h3 class="form-section-title">Correction manuelle des points</h3><p class="text-soft">Toute correction cree une transaction et une trace d'audit. Les employes n'ont pas acces a cette page.</p>{% include "includes/form_fields.html" %}<div class="form-actions"><button class="btn btn-accent">Appliquer</button></div></form>
+{% endblock %}

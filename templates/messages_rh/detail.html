@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="panel mb-3">
+    <div class="d-flex flex-wrap justify-content-between gap-2 align-items-start mb-3">
+        <div>
+            <h3 class="mb-1">{{ conversation.sujet }}</h3>
+            <p class="text-soft mb-0">{{ conversation.employe.nom_complet }} - {{ conversation.get_statut_display }} - {{ conversation.date_derniere_reponse }}</p>
+        </div>
+        {% if utilisateur_connecte.role == "ADMIN" or utilisateur_connecte.role == "RESPONSABLE_RH" %}
+            {% if conversation.statut != "cloturee" %}
+                <form method="post" action="{% url 'rh_conversation_close' conversation.id %}">{% csrf_token %}
+                    <button class="btn btn-outline-danger"><i class="bi bi-lock"></i> Cloturer</button>
+                </form>
+            {% else %}
+                <span class="status-badge status-cloturee">Cloturee</span>
+            {% endif %}
+        {% endif %}
+    </div>
+    <div class="conversation-thread">
+        {% for m in conversation.messages.all %}
+            <div class="request-item mb-2">
+                <div>
+                    <strong>{{ m.expediteur }}</strong>
+                    <small>{{ m.date_envoi }}{% if m.lu %} - lu{% endif %}</small>
+                    {% if m.contenu %}<p class="mb-2">{{ m.contenu }}</p>{% endif %}
+                    {% if m.piece_jointe %}
+                        <a class="message-attachment" href="{% url 'rh_message_attachment' m.pk %}" target="_blank" rel="noopener">
+                            <i class="bi bi-paperclip"></i>
+                            <span>{{ m.nom_piece_jointe|default:"Piece jointe" }}</span>
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        {% empty %}
+            <div class="empty-state">Aucun message.</div>
+        {% endfor %}
+    </div>
+</div>
+{% if conversation.statut != "cloturee" %}
+    <form method="post" class="form-panel" enctype="multipart/form-data">{% csrf_token %}
+        <h3 class="form-section-title">Repondre</h3>
+        {% include "includes/form_fields.html" %}
+        <small class="text-soft">Formats acceptes: PDF, DOC, DOCX, JPG, JPEG, PNG. Taille maximale 5 Mo.</small>
+        <div class="form-actions"><button class="btn btn-accent"><i class="bi bi-send"></i> Repondre</button></div>
+    </form>
+{% else %}
+    <div class="panel empty-state">Cette conversation est cloturee.</div>
+{% endif %}
+{% endblock %}

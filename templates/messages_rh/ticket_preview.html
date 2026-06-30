@@ -1,0 +1,17 @@
+<a class="support-ticket {% if selected_ticket and selected_ticket.pk == ticket.pk %}active{% endif %}" href="{% url 'rh_conversation_detail' ticket.pk %}?tab={% if ticket.is_closed %}closed{% else %}active{% endif %}">
+    <div class="support-ticket-top">
+        <strong>{{ ticket.sujet }}</strong>
+        <span>{{ ticket.date_derniere_reponse|date:"d/m H:i" }}</span>
+    </div>
+    <div class="support-ticket-meta">
+        <span>{{ ticket.employe.nom_complet|default:"Employe indisponible" }}</span>
+        <span class="status-badge status-{{ ticket.statut }}">{{ ticket.get_statut_display }}</span>
+    </div>
+    <div class="support-ticket-meta">
+        <span>{{ ticket.get_priorite_display }}</span>
+        <span>{% if ticket.responsable_rh %}{{ ticket.responsable_rh.employe.nom_complet|default:ticket.responsable_rh }}{% else %}Non traite{% endif %}</span>
+    </div>
+    {% with last=ticket.messages.last %}
+        <p>{% if last %}{{ last.contenu|default:last.nom_piece_jointe|truncatechars:90 }}{% else %}Aucun message{% endif %}</p>
+    {% endwith %}
+</a>

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block content %}
+<form method="get" class="filter-row">
+    <select name="departement" class="form-select">
+        <option value="">Tous les departements</option>
+        {% for d in departements %}<option value="{{ d.id }}" {% if departement_filtre == d.id|stringformat:"s" %}selected{% endif %}>{{ d.libelle }}</option>{% endfor %}
+    </select>
+    <select name="poste" class="form-select">
+        <option value="">Tous les postes</option>
+        {% for p in postes %}<option value="{{ p.id }}" {% if poste_filtre == p.id|stringformat:"s" %}selected{% endif %}>{{ p.libelle }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-accent">Filtrer</button>
+    <a class="btn btn-rh-soft" href="{% url 'payroll_analytics' %}">Reinitialiser</a>
+</form>
+<div class="command-grid mb-3">
+    <div class="metric-tile tile-lime"><span>Salaire minimum</span><strong>{{ stats.min|default:"0" }}</strong><small>MAD</small></div>
+    <div class="metric-tile tile-yellow"><span>Salaire moyen</span><strong>{{ stats.avg|floatformat:0|default:"0" }}</strong><small>MAD</small></div>
+    <div class="metric-tile tile-blue"><span>Salaire median</span><strong>{{ mediane|floatformat:0 }}</strong><small>MAD</small></div>
+    <div class="metric-tile tile-coral"><span>Salaire maximum</span><strong>{{ stats.max|default:"0" }}</strong><small>MAD</small></div>
+    <div class="metric-tile tile-blue"><span>Masse salariale</span><strong>{{ stats.total|floatformat:0|default:"0" }}</strong><small>MAD / mois</small></div>
+    <div class="metric-tile tile-lime"><span>Total primes</span><strong>{{ stats.primes|floatformat:0|default:"0" }}</strong><small>MAD</small></div>
+</div>
+<div class="row g-3 mb-3">
+    <div class="col-lg-7">
+        <div class="panel compact-panel payroll-chart-panel">
+            <div class="panel-header"><div><h3>Evolution mensuelle</h3><p class="mb-0">Masse salariale par date d'effet.</p></div></div>
+            {% if monthly_payroll %}
+                <div class="payroll-bars">
+                    {% for row in monthly_payroll %}
+                        <div class="payroll-bar-col">
+                            <div class="payroll-bar" style="height: {{ row.bar_height }}%"><span>{{ row.total|floatformat:0 }}</span></div>
+                            <small>{{ row.label }}</small>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state">Aucune donnee salariale pour construire le graphique.</div>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="panel compact-panel payroll-chart-panel">
+            <div class="panel-header"><div><h3>Comparaison par departement</h3><p class="mb-0">Salaire moyen et effectif.</p></div></div>
+            {% for row in par_departement %}
+                <div class="payroll-horizontal-row">
+                    <div><strong>{{ row.label }}</strong><small>{{ row.total }} employe(s)</small></div>
+                    <div class="payroll-track"><span style="width: {{ row.bar_width }}%"></span></div>
+                    <b>{{ row.moyenne|floatformat:0 }}</b>
+                </div>
+            {% empty %}
+                <div class="empty-state">Aucune remuneration par departement.</div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+<div class="panel compact-panel"><h3>Table salariale</h3><table class="table table-compact"><thead><tr><th>Employe</th><th>Departement</th><th>Poste</th><th>Salaire base</th><th>Prime</th><th></th></tr></thead><tbody>{% for r in remunerations %}<tr><td>{{ r.employe.nom_complet }}</td><td>{{ r.employe.departement }}</td><td>{{ r.employe.poste }}</td><td>{{ r.salaire_base }} {{ r.devise }}</td><td>{{ r.prime }}</td><td class="text-end">{% if utilisateur_connecte.role == "ADMIN" %}<a class="btn btn-sm btn-accent" href="{% url 'salary_edit' r.id %}">Modifier</a>{% endif %}</td></tr>{% empty %}<tr><td colspan="6" class="empty-state">Aucune remuneration.</td></tr>{% endfor %}</tbody></table></div>
+<div class="row g-3 mt-1">
+    <div class="col-lg-6"><div class="panel compact-panel"><h3>Salaire par departement</h3><table class="table table-compact"><thead><tr><th>Departement</th><th>Effectif</th><th>Moyenne</th><th>Min</th><th>Max</th></tr></thead><tbody>{% for row in par_departement %}<tr><td>{{ row.employe__departement__libelle|default:"-" }}</td><td>{{ row.total }}</td><td>{{ row.moyenne|floatformat:0 }}</td><td>{{ row.minimum }}</td><td>{{ row.maximum }}</td></tr>{% endfor %}</tbody></table></div></div>
+    <div class="col-lg-6"><div class="panel compact-panel"><h3>Salaire par poste</h3>{% for row in par_poste %}<div class="payroll-horizontal-row"><div><strong>{{ row.label }}</strong><small>{{ row.total }} employe(s)</small></div><div class="payroll-track"><span style="width: {{ row.bar_width }}%"></span></div><b>{{ row.moyenne|floatformat:0 }}</b></div>{% empty %}<div class="empty-state">Aucune remuneration par poste.</div>{% endfor %}</div></div>
+</div>
+{% endblock %}

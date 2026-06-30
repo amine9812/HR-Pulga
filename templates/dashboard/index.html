@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+{% block content %}
+{% comment %}
+   DASHBOARD — Tableau de bord
+   Role-based layout: admin | rh | manager | employee
+   Data source: core/views.py::dashboard()
+{% endcomment %}
+
+<section class="db-root db-variant-{{ dashboard_variant }}" aria-label="Tableau de bord">
+
+  {# ── 1. GREETING HEADER ───────────────────────────────────── #}
+  <header class="db-header rh-card">
+    <div class="db-header-left">
+      <span class="db-header-eyebrow">
+        <i class="bi bi-grid-1x2" aria-hidden="true"></i>
+        Tableau de bord &nbsp;·&nbsp; {{ role_label }}
+      </span>
+      <h2 class="db-header-title">
+        Bonjour,&nbsp;<span class="db-header-name">{{ utilisateur_connecte.employe.prenom|default:"Utilisateur" }}</span>
+      </h2>
+      <p class="db-header-sub">
+        {% if dashboard_variant == "admin" %}Vue opérationnelle globale — tous les services et départements.
+        {% elif dashboard_variant == "rh" %}Tableau de pilotage RH — demandes, validations et suivi du personnel.
+        {% elif dashboard_variant == "manager" %}Tableau de pilotage équipe — présence, tâches et validations.
+        {% else %}Votre espace personnel — solde, planning, demandes et notifications.
+        {% endif %}
+      </p>
+    </div>
+    <div class="db-header-right">
+      {% if notifications_dashboard > 0 %}
+        <a href="{% url 'notifications_list' %}" class="db-header-badge" aria-label="{{ notifications_dashboard }} notification(s) non lue(s)">
+          <i class="bi bi-bell-fill" aria-hidden="true"></i>
+          {{ notifications_dashboard }}
+        </a>
+      {% endif %}
+      {% if dashboard_variant == "admin" or dashboard_variant == "rh" %}
+        <a href="{% url 'employes_list' %}" class="btn btn-rh-soft btn-sm">
+          <i class="bi bi-people" aria-hidden="true"></i> Employés
+        </a>
+      {% endif %}
+      {% if dashboard_variant != "employee" %}
+        <a href="{% url 'planning' %}" class="btn btn-rh-primary btn-sm">
+          <i class="bi bi-calendar-week" aria-hidden="true"></i> Planning
+        </a>
+      {% else %}
+        <a href="{% url 'conge_create' %}" class="btn btn-rh-primary btn-sm">
+          <i class="bi bi-calendar-plus" aria-hidden="true"></i> Demander un congé
+        </a>
+      {% endif %}
+    </div>
+  </header>
+
+  {# ── 2. KPI STRIP ─────────────────────────────────────────── #}
+  {% if dashboard_kpis %}
+  <div class="db-kpi-strip" role="list" aria-label="Indicateurs clés">
+    {% for item in dashboard_kpis %}
+    <div class="db-kpi tone-{{ item.tone }}" role="listitem">
+
+      {# Icon — absolutely positioned top-right via CSS #}
+      <div class="db-kpi-icon" aria-hidden="true">
+        <i class="bi {{ item.icon }}"></i>
+      </div>
+
+      {# Text body #}
+      <div class="db-kpi-body">
+        <span class="db-kpi-label">{{ item.label }}</span>
+        <strong class="db-kpi-value">{{ item.value }}</strong>
+        {% if item.detail %}
+        <div class="db-kpi-detail">
+          {# Trend arrow based on tone #}
+          {% if item.tone == "success" %}
+            <i class="bi bi-arrow-up-short" aria-hidden="true"></i>
+          {% elif item.tone == "danger" %}
+            <i class="bi bi-arrow-down-short" aria-hidden="true"></i>
+          {% elif item.tone == "warning" %}
+            <i class="bi bi-dash" aria-hidden="true"></i>
+          {% endif %}
+          <span>{{ item.detail }}</span>
+        </div>
+        {% endif %}
+      </div>
+
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {# ── 3. MAIN BODY ─────────────────────────────────────────── #}
+  <div class="db-body">
+
+    {# LEFT COLUMN: charts #}
+    <div class="db-col-main">
+
+      {% if dashboard_charts %}
+      <div class="db-charts-grid" aria-label="Graphiques analytiques">
+        {% for chart in dashboard_charts %}
+        <article class="db-chart-card rh-card" style="--chart-accent: {{ chart.color }};">
+          <header class="db-chart-header">
+            <div class="db-chart-icon" aria-hidden="true">
+              <i class="bi {{ chart.icon }}"></i>
+            </div>
+            <div class="db-chart-titles">
+              <span class="db-chart-sub">{{ chart.subtitle }}</span>
+              <strong class="db-chart-title">{{ chart.title }}</strong>
+            </div>
+            <a class="db-chart-link" href="{{ chart.url }}" aria-label="Voir les détails : {{ chart.title }}">
+              Voir <i class="bi bi-arrow-right" aria-hidden="true"></i>
+            </a>
+          </header>
+
+          <div class="db-chart-body" aria-label="Graphique : {{ chart.title }}">
+            {% if chart.chart_svg %}
+              {{ chart.chart_svg }}
+            {% else %}
+              <div class="db-empty-chart" role="status">
+                <i class="bi bi-bar-chart-line" aria-hidden="true"></i>
+                <span>Aucune donnée disponible</span>
+              </div>
+            {% endif %}
+          </div>
+
+          {% if chart.metrics %}
+          <footer class="db-chart-metrics" aria-label="Métriques : {{ chart.title }}">
+            {% for m in chart.metrics %}
+            <div class="db-chart-metric">
+              <strong>{{ m.value }}</strong>
+              <span>{{ m.label }}</span>
+            </div>
+            {% endfor %}
+          </footer>
+          {% endif %}
+        </article>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {# Activity panel: recent requests #}
+      <div class="db-activity-card rh-card" aria-label="Activité récente">
+        <div class="rh-card-header">
+          <div>
+            <span class="eyebrow">Activité</span>
+            <h3>
+              {% if dashboard_variant == "employee" %}Mes demandes récentes
+              {% else %}Demandes récentes
+              {% endif %}
+            </h3>
+          </div>
+          <a href="{% url 'conges_list' %}" class="btn btn-rh-soft btn-sm">Tout voir</a>
+        </div>
+        <div class="db-activity-list" role="list">
+          {% for demande in recent_conges %}
+          <a class="db-activity-item" href="{% url 'conges_list' %}" role="listitem">
+            <div class="db-activity-dot dot-{{ demande.statut }}" aria-hidden="true"></div>
+            <div class="db-activity-info">
+              {% if dashboard_variant != "employee" %}
+              <strong>{{ demande.employe.nom_complet }}</strong>
+              {% endif %}
+              <span>{{ demande.type }} · {{ demande.date_debut|date:"d/m/Y" }} → {{ demande.date_fin|date:"d/m/Y" }}</span>
+            </div>
+            <span class="db-status db-status-{{ demande.statut }}" aria-label="Statut : {{ demande.statut }}">{{ demande.statut }}</span>
+          </a>
+          {% empty %}
+          <div class="db-empty-list" role="status">
+            <i class="bi bi-inbox" aria-hidden="true"></i>
+            <span>Aucune demande récente</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+    </div>{# /db-col-main #}
+
+    {# RIGHT COLUMN: actions, alerts, news #}
+    <div class="db-col-side">
+
+      {# Quick actions #}
+      {% if dashboard_actions %}
+      <div class="db-panel rh-card" aria-label="Actions rapides">
+        <div class="rh-card-header">
+          <div>
+            <span class="eyebrow">Actions</span>
+            <h3>Accès rapide</h3>
+          </div>
+        </div>
+        <nav class="db-actions-list" aria-label="Raccourcis">
+          {% for action in dashboard_actions %}
+          <a href="{{ action.url }}" class="db-action-item" aria-label="{{ action.label }} — {{ action.detail }}">
+            <div class="db-action-icon" aria-hidden="true">
+              <i class="bi {{ action.icon }}"></i>
+            </div>
+            <div class="db-action-body">
+              <strong>{{ action.label }}</strong>
+              <small>{{ action.detail }}</small>
+            </div>
+            <i class="bi bi-chevron-right db-action-arrow" aria-hidden="true"></i>
+          </a>
+          {% endfor %}
+        </nav>
+      </div>
+      {% endif %}
+
+      {# Alerts / priorities #}
+      {% if dashboard_alerts %}
+      <div class="db-panel rh-card" aria-label="Alertes et priorités">
+        <div class="rh-card-header">
+          <div>
+            <span class="eyebrow">Priorités</span>
+            <h3>À traiter</h3>
+          </div>
+        </div>
+        <div class="db-alerts-list" role="list">
+          {% for alert in dashboard_alerts %}
+          <a class="db-alert-item tone-{{ alert.tone }}" href="{{ alert.url }}" role="listitem"
+             aria-label="{{ alert.title }} — {{ alert.detail }}">
+            <div class="db-alert-icon" aria-hidden="true">
+              <i class="bi {{ alert.icon }}"></i>
+            </div>
+            <div>
+              <strong>{{ alert.title }}</strong>
+              <small>{{ alert.detail }}</small>
+            </div>
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      {# News panel #}
+      {% if actualites_recentes %}
+      <div class="db-panel rh-card" aria-label="Actualités RH">
+        <div class="rh-card-header">
+          <div>
+            <span class="eyebrow">Communication</span>
+            <h3>Actualités</h3>
+          </div>
+          <a href="{% url 'news_list' %}" class="btn btn-rh-soft btn-sm">Voir tout</a>
+        </div>
+        <div class="db-news-list" role="list">
+          {% for a in actualites_recentes %}
+          <a class="db-news-item" href="{% url 'news_list' %}" role="listitem">
+            <div class="db-news-dot" aria-hidden="true"></div>
+            <div class="db-news-body">
+              <strong>{{ a.titre }}</strong>
+              <time>{{ a.date_publication|date:"d/m/Y" }}</time>
+            </div>
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+    </div>{# /db-col-side #}
+
+  </div>{# /db-body #}
+
+</section>
+{% endblock %}
