@@ -65,6 +65,10 @@
                 <div class="col-md-4"><label class="form-label">Cooldown renvoi reset (secondes)</label><input name="password_reset_resend_cooldown_seconds" class="form-control" value="{{ settings_map.password_reset_resend_cooldown_seconds|default:'60' }}" inputmode="numeric"></div>
                 <div class="col-md-6"><label class="form-label">Brevo sender email</label><input name="brevo_sender_email" class="form-control" value="{{ settings_map.brevo_sender_email }}" placeholder="hr@company.com"></div>
                 <div class="col-md-6"><label class="form-label">Brevo sender name</label><input name="brevo_sender_name" class="form-control" value="{{ settings_map.brevo_sender_name|default:'HR Platform' }}" placeholder="HR Platform"></div>
+                <div class="col-md-3"><label class="form-label">Template verification</label><input name="brevo_account_verification_template_id" class="form-control" value="{{ settings_map.brevo_account_verification_template_id }}" inputmode="numeric"></div>
+                <div class="col-md-3"><label class="form-label">Template reset</label><input name="brevo_password_reset_template_id" class="form-control" value="{{ settings_map.brevo_password_reset_template_id }}" inputmode="numeric"></div>
+                <div class="col-md-3"><label class="form-label">Template approuve</label><input name="brevo_account_approved_template_id" class="form-control" value="{{ settings_map.brevo_account_approved_template_id }}" inputmode="numeric"></div>
+                <div class="col-md-3"><label class="form-label">Template refuse</label><input name="brevo_account_rejected_template_id" class="form-control" value="{{ settings_map.brevo_account_rejected_template_id }}" inputmode="numeric"></div>
                 <div class="col-12"><div class="alert alert-info mb-0">La cle API Brevo reste uniquement dans les variables d'environnement serveur et n'est jamais affichee ici.</div></div>
                 <div class="col-12"><button class="btn btn-accent">Enregistrer</button></div>
             </form>

@@ -107,6 +107,11 @@ class BrevoAccountSecurityTests(TestCase):
         self.assertEqual(duplicate.status_code, 200)
         self.assertEqual(AccountCreationRequest.objects.filter(email="verified@company.test").count(), 1)
 
+        inactive_user = User.objects.create_user("inactive@company.test", password="OldPass123!", email="inactive@company.test", is_active=False)
+        inactive_duplicate = self.client.post(reverse("account_request_create"), self.signup_payload(email="inactive@company.test"))
+        self.assertEqual(inactive_duplicate.status_code, 200)
+        self.assertFalse(AccountCreationRequest.objects.filter(email="inactive@company.test").exists())
+
     @patch("accounts.services.BrevoEmailService.send_account_decision", return_value=EmailResult(True))
     def test_non_admin_cannot_approve_and_unverified_request_cannot_be_approved(self, send_decision):
         plain_user = User.objects.create_user("plain", password="plain123", email="plain@company.test")
@@ -217,3 +222,4 @@ class BrevoAccountSecurityTests(TestCase):
                 cooldown_seconds=60,
                 resend=True,
             )
+        self.assertTrue(HistoriqueAction.objects.filter(action="VERIFICATION_CODE_RESEND_RATE_LIMITED").exists())

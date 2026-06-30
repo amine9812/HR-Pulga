@@ -62,12 +62,31 @@
                 {% if not compact %}
                     <td>
                         {% if request_item.status == "pending" and request_item.email_verified %}
-                            <form method="post" action="{% url 'admin_account_request_decision' request_item.id %}" class="d-flex flex-wrap gap-1" onsubmit="return confirm('Confirmer cette decision ?')">
-                                {% csrf_token %}
-                                <input name="admin_note" class="form-control form-control-sm" placeholder="Note admin">
-                                <button name="action" value="approve" class="btn btn-sm btn-success">Approuver</button>
-                                <button name="action" value="deny" class="btn btn-sm btn-outline-danger">Refuser</button>
-                            </form>
+                            <button class="btn btn-sm btn-accent" type="button" data-bs-toggle="modal" data-bs-target="#accountDecision{{ request_item.id }}">Decider</button>
+                            <div class="modal fade" id="accountDecision{{ request_item.id }}" tabindex="-1" aria-labelledby="accountDecisionLabel{{ request_item.id }}" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered">
+                                    <div class="modal-content">
+                                        <form method="post" action="{% url 'admin_account_request_decision' request_item.id %}">
+                                            {% csrf_token %}
+                                            <div class="modal-header">
+                                                <h2 class="modal-title fs-6" id="accountDecisionLabel{{ request_item.id }}">Decision compte</h2>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <p class="mb-2"><strong>{{ request_item.full_name|default:request_item.email }}</strong></p>
+                                                <p class="text-soft small">L'approbation active le compte et cree une action d'onboarding RH. Le refus conserve la demande inactive.</p>
+                                                <label class="form-label" for="adminNote{{ request_item.id }}">Note admin / raison</label>
+                                                <textarea id="adminNote{{ request_item.id }}" name="admin_note" class="form-control" rows="3"></textarea>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-rh-soft" data-bs-dismiss="modal">Annuler</button>
+                                                <button name="action" value="deny" class="btn btn-outline-danger">Refuser</button>
+                                                <button name="action" value="approve" class="btn btn-success">Approuver</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
                         {% elif request_item.status == "verifying" %}
                             <small>En attente du code email.</small>
                         {% else %}

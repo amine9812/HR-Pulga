@@ -28,8 +28,8 @@ class AccountCreationRequestForm(forms.Form):
 
     def clean_email(self):
         email = validate_company_email(self.cleaned_data.get("email") or "")
-        if User.objects.filter(email__iexact=email, is_active=True).exists() or User.objects.filter(username__iexact=email, is_active=True).exists():
-            raise forms.ValidationError("Un compte actif existe deja pour cet email.")
+        if User.objects.filter(email__iexact=email).exists() or User.objects.filter(username__iexact=email).exists():
+            raise forms.ValidationError("Un compte existe deja pour cet email.")
         if AccountCreationRequest.objects.filter(email__iexact=email).exists():
             raise forms.ValidationError("Une demande est deja en cours pour cet email.")
         return email

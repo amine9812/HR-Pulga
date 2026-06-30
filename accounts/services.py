@@ -128,7 +128,9 @@ class BrevoEmailService:
         if not self.sender_email:
             audit("BREVO_EMAIL_SEND_FAILED", f"Missing BREVO_SENDER_EMAIL for {audit_action}; recipient={to_email}")
             return EmailResult(False, "Email sender is not configured.")
-        template_id = os.environ.get(template_env, "").strip() if template_env else ""
+        template_id = ""
+        if template_env:
+            template_id = os.environ.get(template_env, "").strip() or setting_value(template_env.lower(), "")
         payload = {
             "sender": {"email": self.sender_email, "name": self.sender_name},
             "to": [{"email": to_email, "name": to_name or to_email}],
@@ -243,6 +245,7 @@ class VerificationCodeService:
         if active:
             if resend and active.resend_available_at and active.resend_available_at > now:
                 seconds = max(1, int((active.resend_available_at - now).total_seconds()))
+                audit("VERIFICATION_CODE_RESEND_RATE_LIMITED", f"purpose={purpose}; email={email}; wait_seconds={seconds}")
                 raise ValidationError(f"Please wait {seconds} seconds before requesting another code.")
             resend_count = active.resend_count + (1 if resend else 0)
             active.locked_at = now
@@ -314,8 +317,8 @@ class AccountRequestService:
     def start_request(self, cleaned_data):
         email = validate_company_email(cleaned_data["email"])
         audit("ACCOUNT_REQUEST_FORM_SUBMITTED", f"email={email}")
-        if User.objects.filter(Q(email__iexact=email) | Q(username__iexact=email), is_active=True).exists():
-            raise ValidationError("An active account already exists for this email.")
+        if User.objects.filter(Q(email__iexact=email) | Q(username__iexact=email)).exists():
+            raise ValidationError("An account already exists for this email.")
         existing = AccountCreationRequest.objects.filter(email__iexact=email).first()
         if existing and existing.status in {AccountCreationRequest.STATUS_VERIFYING, AccountCreationRequest.STATUS_PENDING, AccountCreationRequest.STATUS_APPROVED, AccountCreationRequest.STATUS_DENIED}:
             raise ValidationError("An account request already exists for this email.")
@@ -389,8 +392,8 @@ class AccountRequestService:
             locked = AccountCreationRequest.objects.select_for_update().select_related("employee").get(pk=request_obj.pk)
             if not locked.is_decision_ready:
                 raise ValidationError("This account request is not ready for approval.")
-            if User.objects.filter(Q(username__iexact=locked.email) | Q(email__iexact=locked.email), is_active=True).exists():
-                raise ValidationError("An active account already exists for this email.")
+            if User.objects.filter(Q(username__iexact=locked.email) | Q(email__iexact=locked.email)).exists():
+                raise ValidationError("An account already exists for this email.")
             if locked.employee and UtilisateurProfile.objects.filter(employe=locked.employee, actif=True).exists():
                 raise ValidationError("This employee is already linked to an active account.")
             user = User(username=locked.email, email=locked.email, first_name=locked.first_name, last_name=locked.last_name, is_active=True)

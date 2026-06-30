@@ -799,6 +799,10 @@ def admin_settings_save(request):
             "password_reset_resend_cooldown_seconds",
             "brevo_sender_email",
             "brevo_sender_name",
+            "brevo_account_verification_template_id",
+            "brevo_password_reset_template_id",
+            "brevo_account_approved_template_id",
+            "brevo_account_rejected_template_id",
         ]
         changed = []
         for key in setting_fields:
