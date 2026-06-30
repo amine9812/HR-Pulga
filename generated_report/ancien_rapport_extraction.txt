@@ -1,0 +1,1180 @@
+
+
+===== PAGE 1 =====
+Rapport de Projet de Fin d’Année
+Conception et réalisation d’une plateforme web de gestion des
+ressources humaines
+Projet Django basé sur le dépôt HR_django
+Plateforme RH intégrée
+Employés, congés, demandes administratives,
+documents, pointage, planning, formations, bou-
+tique, réclamations, paie, notifications et audit.
+Encadrant : Dr. Houda Orchi
+Réalisé par : Zine Mohamed Amine
+Ghaout Khalid
+Année universitaire : 2025–2026
+
+
+===== PAGE 2 =====
+Remerciements
+Nous tenons à exprimer notre profonde gratitude à Dr. Houda Orchi pour son encadrement, sa
+disponibilité et ses conseils précieux tout au long de la réalisation de ce Projet de Fin d’Année.
+Son accompagnement nous a permis de mieux structurer notre travail, d’améliorer nos choix
+techniques et de renforcer la qualité globale de notre solution.
+Nous la remercions également pour ses orientations méthodologiques, ses remarques
+constructives et son suivi rigoureux, qui ont contribué à l’avancement du projet dans de bonnes
+conditions. Ses recommandations nous ont aidés à mieux organiser notre démarche, depuis
+l’analyse des besoins jusqu’à la conception, la réalisation et la validation de l’application.
+Nous adressons aussi nos remerciements à l’ensemble des personnes qui nous ont apporté
+leur aide, directement ou indirectement, durant la réalisation de ce travail.
+i
+
+
+===== PAGE 3 =====
+Table des matières
+Remerciements i
+Introduction générale 1
+1 Présentation du cadre de projet 3
+1.1 Introduction . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3
+1.2 Présentation du contexte général . . . . . . . . . . . . . . . . . . . . . . . . . 3
+1.3 Étude de l’existant . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3
+1.3.1 Description de l’existant . . . . . . . . . . . . . . . . . . . . . . . . . 3
+1.3.2 Critique de l’existant . . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+1.3.3 Solution proposée . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+1.4 Objectifs du projet . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+1.5 Choix du modèle de développement . . . . . . . . . . . . . . . . . . . . . . . 5
+1.6 Planning prévisionnel . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+1.7 Conclusion . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+2 Spécification des besoins 7
+2.1 Introduction . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7
+2.2 Besoins fonctionnels . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7
+2.3 Besoins non fonctionnels . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 8
+2.4 Présentation des acteurs . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 8
+2.5 Description détaillée des cas d’utilisation . . . . . . . . . . . . . . . . . . . . 9
+2.5.1 S’authentifier . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 9
+2.5.2 Gérer un dossier employé . . . . . . . . . . . . . . . . . . . . . . . . 9
+2.5.3 Soumettre et valider un congé . . . . . . . . . . . . . . . . . . . . . . 9
+2.5.4 Pointer l’entrée et la sortie . . . . . . . . . . . . . . . . . . . . . . . . 10
+2.5.5 Commander du matériel . . . . . . . . . . . . . . . . . . . . . . . . . 10
+ii
+
+
+===== PAGE 4 =====
+Plateforme RH Django TABLE DES MA TIÈRES
+2.5.6 Traiter une réclamation . . . . . . . . . . . . . . . . . . . . . . . . . . 11
+2.6 Diagramme global des cas d’utilisation . . . . . . . . . . . . . . . . . . . . . . 12
+2.7 Conclusion . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 12
+3 Conception du système 13
+3.1 Introduction . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+3.2 Vue fonctionnelle . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+3.2.1 Diagramme global des cas d’utilisation . . . . . . . . . . . . . . . . . 13
+3.2.2 Cas d’utilisation détaillés du dashboard et du chatbot . . . . . . . . . . 14
+3.3 Vue statique . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 15
+3.3.1 Diagramme de classes métier principal . . . . . . . . . . . . . . . . . 15
+3.3.2 Classes utilisateurs, rôles et audit . . . . . . . . . . . . . . . . . . . . 16
+3.3.3 Classes du chatbot RAG/Grok . . . . . . . . . . . . . . . . . . . . . . 17
+3.4 Vue applicative . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18
+3.4.1 Architecture logicielle . . . . . . . . . . . . . . . . . . . . . . . . . . 18
+3.4.2 Diagramme de composants . . . . . . . . . . . . . . . . . . . . . . . . 19
+3.5 Vue dynamique . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 20
+3.5.1 Séquence du dashboard et des statistiques . . . . . . . . . . . . . . . . 20
+3.5.2 Séquence du workflow boutique et points . . . . . . . . . . . . . . . . 21
+3.5.3 Séquence du chatbot RH RAG/Grok . . . . . . . . . . . . . . . . . . . 22
+3.6 Diagrammes d’activité . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 23
+3.6.1 Activité de consultation des statistiques du dashboard . . . . . . . . . . 23
+3.6.2 Activité du chatbot RAG/Grok . . . . . . . . . . . . . . . . . . . . . . 24
+3.7 Architecture IA/RAG . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 25
+3.8 Déploiement . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 26
+3.8.1 Architecture de déploiement cible sur V ercel . . . . . . . . . . . . . . 26
+3.9 Dictionnaire de données synthétique . . . . . . . . . . . . . . . . . . . . . . . 27
+3.10 Conclusion . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 28
+4 Réalisation du système 29
+4.1 Introduction . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 29
+4.2 Environnement de développement . . . . . . . . . . . . . . . . . . . . . . . . 29
+iii
+
+
+===== PAGE 5 =====
+Plateforme RH Django TABLE DES MA TIÈRES
+4.2.1 Environnement matériel . . . . . . . . . . . . . . . . . . . . . . . . . 29
+4.2.2 Environnement logiciel . . . . . . . . . . . . . . . . . . . . . . . . . . 29
+4.3 Technologies utilisées . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 30
+4.4 Architecture du projet . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 30
+4.5 Structure du code source . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 31
+4.6 Implémentation des modules principaux . . . . . . . . . . . . . . . . . . . . . 31
+4.6.1 Authentification et rôles . . . . . . . . . . . . . . . . . . . . . . . . . 31
+4.6.2 Gestion des employés et de l’organisation . . . . . . . . . . . . . . . . 31
+4.6.3 Congés et demandes administratives . . . . . . . . . . . . . . . . . . . 31
+4.6.4 Documents, notifications et audit . . . . . . . . . . . . . . . . . . . . 31
+4.6.5 Pointage, planning et tâches . . . . . . . . . . . . . . . . . . . . . . . 32
+4.6.6 Formations, messagerie RH et actualités . . . . . . . . . . . . . . . . . 32
+4.6.7 Boutique, points et réclamations . . . . . . . . . . . . . . . . . . . . . 32
+4.6.8 Paie et analyses salariales . . . . . . . . . . . . . . . . . . . . . . . . 32
+4.7 Implémentation du dashboard et des statistiques . . . . . . . . . . . . . . . . . 32
+4.8 Implémentation du chatbot RAG avec API Grok . . . . . . . . . . . . . . . . . 33
+4.9 Sécurité et gestion des accès . . . . . . . . . . . . . . . . . . . . . . . . . . . 33
+4.10 Tests et validation technique . . . . . . . . . . . . . . . . . . . . . . . . . . . 33
+4.11 Principales interfaces graphiques . . . . . . . . . . . . . . . . . . . . . . . . . 34
+4.11.1 Onglet Tableau de bord . . . . . . . . . . . . . . . . . . . . . . . . . . 34
+4.11.2 Onglet Départements . . . . . . . . . . . . . . . . . . . . . . . . . . . 35
+4.11.3 Onglet Présence / Pointage . . . . . . . . . . . . . . . . . . . . . . . . 36
+4.11.4 Onglet Planning / Shifts . . . . . . . . . . . . . . . . . . . . . . . . . 36
+4.11.5 Onglet Boutique employé / Matériel . . . . . . . . . . . . . . . . . . . 37
+4.12 Difficultés rencontrées et solutions apportées . . . . . . . . . . . . . . . . . . 38
+4.13 Conclusion . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 39
+Conclusion générale 40
+Perspectives et améliorations futures . . . . . . . . . . . . . . . . . . . . . . . . . . 40
+A Annexes 41
+A.1 Routes principales . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 41
+iv
+
+
+===== PAGE 6 =====
+Plateforme RH Django TABLE DES MA TIÈRES
+A.2 Captures secondaires . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 41
+A.3 État du module RAG/Grok . . . . . . . . . . . . . . . . . . . . . . . . . . . . 42
+A.4 Extraits de commandes utiles . . . . . . . . . . . . . . . . . . . . . . . . . . . 42
+v
+
+
+===== PAGE 7 =====
+Liste des figures
+2.1 Diagramme global des cas d’utilisation . . . . . . . . . . . . . . . . . . . . . . 12
+3.1 Diagramme global des cas d’utilisation de la plateforme RH . . . . . . . . . . 14
+3.2 Diagramme de cas d’utilisation détaillé du dashboard et du chatbot RAG . . . . 15
+3.3 Diagramme de classes métier principal . . . . . . . . . . . . . . . . . . . . . . 16
+3.4 Diagramme de classes des utilisateurs, rôles, notifications et actions d’audit . . 17
+3.5 Diagramme de classes du module chatbot RH RAG/Grok . . . . . . . . . . . . 18
+3.6 Architecture logicielle de la plateforme RH . . . . . . . . . . . . . . . . . . . 19
+3.7 Diagramme de composants applicatifs . . . . . . . . . . . . . . . . . . . . . . 20
+3.8 Diagramme de séquence du calcul des indicateurs du tableau de bord . . . . . . 21
+3.9 Diagramme de séquence du workflow boutique et points . . . . . . . . . . . . 22
+3.10 Diagramme de séquence de l’assistant RH RAG avec API Grok . . . . . . . . 23
+3.11 Diagramme d’activité de consultation des statistiques du tableau de bord . . . . 24
+3.12 Diagramme d’activité du chatbot RH RAG/Grok . . . . . . . . . . . . . . . . 25
+3.13 Architecture du module assistant RH RAG/Grok . . . . . . . . . . . . . . . . 26
+3.14 Diagramme de déploiement cible de la plateforme sur V ercel . . . . . . . . . . 27
+4.1 Tableau de bord des indicateurs RH et des actions rapides . . . . . . . . . . . . 34
+4.2 Gestion de l’organisation interne : départements, services et postes . . . . . . . 35
+4.3 Suivi des présences et des pointages check-in/check-out . . . . . . . . . . . . . 36
+4.4 Planification des shifts et création groupée de planning . . . . . . . . . . . . . 36
+4.5 Boutique employé et commande de matériel avec points . . . . . . . . . . . . 37
+vi
+
+
+===== PAGE 8 =====
+Liste des tableaux
+1.1 Planning prévisionnel du projet . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+2.1 Acteurs du système . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 8
+2.2 Fiche du cas d’utilisation : authentification . . . . . . . . . . . . . . . . . . . 9
+2.3 Fiche du cas d’utilisation : gestion d’un employé . . . . . . . . . . . . . . . . 9
+2.4 Fiche du cas d’utilisation : traitement d’un congé . . . . . . . . . . . . . . . . 10
+2.5 Fiche du cas d’utilisation : pointage . . . . . . . . . . . . . . . . . . . . . . . 10
+2.6 Fiche du cas d’utilisation : boutique interne . . . . . . . . . . . . . . . . . . . 10
+2.7 Fiche du cas d’utilisation : réclamation RH . . . . . . . . . . . . . . . . . . . 11
+3.1 Dictionnaire de données synthétique . . . . . . . . . . . . . . . . . . . . . . . 27
+4.1 Technologies utilisées dans le projet . . . . . . . . . . . . . . . . . . . . . . . 30
+4.2 Tableau de validation technique . . . . . . . . . . . . . . . . . . . . . . . . . 33
+A.1 Extrait des routes applicatives . . . . . . . . . . . . . . . . . . . . . . . . . . 41
+vii
+
+
+===== PAGE 9 =====
+Introduction générale
+La gestion des ressources humaines constitue un axe central dans le fonctionnement d’une or-
+ganisation moderne. Elle ne se limite plus à la conservation des dossiers du personnel ; elle
+couvre également le suivi des congés, le traitement des demandes administratives, la gestion
+des documents, la planification du travail, la mesure de la présence, la communication interne,
+la formation, les réclamations et l’analyse salariale. Dans un environnement où les informations
+RH sont nombreuses et sensibles, l’utilisation de procédures manuelles ou dispersées entraîne
+des retards, des erreurs de suivi et une faible traçabilité.
+Le projet étudié dans ce rapport est une plateforme web développée avec Django. Le
+dépôt analysé contient une application complète organisée autour de trois applications princi-
+pales : accounts, core et hr. La solution couvre l’authentification, les rôles utilisateurs, le
+tableau de bord, les employés, les départements, les services, les postes, les congés, les de-
+mandes administratives, les documents, les notifications, l’audit, le pointage, le planning, les
+tâches, les formations, la messagerie RH, les actualités, la boutique interne, les réclamations et
+les analyses salariales.
+La problématique principale consiste donc à concevoir une application unifiée permettant
+de centraliser les opérations RH, de sécuriser les accès selon les rôles, d’automatiser certains
+traitements critiques et de fournir aux utilisateurs une vision claire de leurs informations. Le
+système doit permettre à un administrateur ou à un responsable RH de gérer les référentiels et
+les opérations, à un manager de suivre son équipe, et à un employé de consulter ou soumettre
+ses propres demandes.
+La solution proposée repose sur le framework Django, son ORM, une base de données
+SQLite pour l’environnement local, des templates HTML, Bootstrap, Bootstrap Icons et des
+fichiers statiques personnalisés. Le code étudié montre une attention particulière portée aux
+validations métier : prévention des boucles hiérarchiques, contrôle des dates, limitation des
+extensions de fichiers, déduction transactionnelle des soldes, interdiction des soldes de points
+négatifs et restriction des accès par rôle.
+Ce rapport est structuré en quatre chapitres. Le premier chapitre présente le cadre du
+projet, l’étude de l’existant, les objectifs et le modèle de développement. Le deuxième chapitre
+décrit les besoins fonctionnels et non fonctionnels, les acteurs et les principaux cas d’utilisation.
+Le troisième chapitre expose la conception du système à travers des diagrammes et un diction-
+naire de données. Le quatrième chapitre détaille la réalisation technique, l’architecture du code,
+1
+
+
+===== PAGE 10 =====
+Plateforme RH Django Introduction générale
+les modules développés, le dashboard, la sécurité, les tests et les interfaces. Le rapport se termine
+par une conclusion générale et une perspective d’amélioration centrée sur l’ajout d’un module
+de gestion des paiements lié au pointage.
+2
+
+
+===== PAGE 11 =====
+Chapitre 1
+Présentation du cadre de projet
+1.1 Introduction
+Dans ce chapitre, nous présentons le contexte général du projet, l’étude de l’existant, les objec-
+tifs de la solution, le modèle de développement retenu et le planning prévisionnel. Cette partie
+permet de situer le besoin RH auquel répond la plateforme et de préciser le cadre dans lequel
+la solution a été réalisée.
+1.2 Présentation du contexte général
+Le projet correspond à une plateforme web de gestion des ressources humaines. L’application
+vise à regrouper dans un même environnement les traitements quotidiens liés aux employés et
+aux processus RH : gestion des dossiers, suivi hiérarchique, congés, demandes administratives,
+documents, notifications, pointage, planning, tâches, formations, messages RH, actualités, bou-
+tique interne, réclamations, points et analyses salariales.
+Le code source est organisé sous forme de projet Django. Le dossier config contient la
+configuration générale et le routage principal. L’application accounts assure l’authentification
+et la définition des profils utilisateurs. L’application core contient le tableau de bord et l’entrée
+principale. L’application hr concentre les modèles métier, les formulaires, les vues, les règles
+de permission, les services métier, les tests et les commandes de seed.
+1.3 Étude de l’existant
+1.3.1 Description de l’existant
+Dans de nombreuses organisations, les opérations RH sont réalisées à travers des fichiers sé-
+parés, des échanges par messagerie ou des validations manuelles. Cette organisation rend diffi-
+cile le suivi des demandes et augmente le risque d’erreur : un congé peut être validé sans contrôle
+3
+
+
+===== PAGE 12 =====
+Plateforme RH Django CHAPITRE 1. PRÉSENTA TION DU CADRE DE PROJET
+automatique du solde, une demande administrative peut rester sans réponse, un document peut
+être stocké sans traçabilité, ou un manager peut manquer de visibilité sur son équipe.
+Le projet étudié répond à ces limites par une application centralisée. Le dépôt contient
+déjà une base SQLite, des migrations Django appliquées, des templates pour chaque module, des
+règles de validation dans les formulaires et les modèles, ainsi qu’une suite de tests automatisés
+couvrant les accès, les workflows et les abus fonctionnels.
+1.3.2 Critique de l’existant
+L’existant manuel présente plusieurs insuffisances : dispersion des données, absence de work-
+flow unifié, faible traçabilité, difficulté de contrôle des droits, duplication des traitements, lenteur
+de validation et manque d’indicateurs. Dans le contexte d’un service RH, ces limites peuvent
+entraîner une perte de temps importante et une dégradation de la qualité de service envers les
+employés.
+1.3.3 Solution proposée
+La solution proposée est une application web Django permettant de gérer les processus RH
+depuis une interface unique. Elle introduit une séparation claire entre les profils : administrateur,
+responsable RH, responsable hiérarchique et employé. Chaque profil accède uniquement aux
+informations et actions autorisées.
+La solution automatise les traitements critiques. La validation d’un congé déclenche la
+déduction du solde uniquement si le solde est suffisant. Le pointage calcule les heures, le statut
+de présence et les points. La boutique vérifie le stock et le solde de points avant d’accepter une
+commande. Les actions importantes sont enregistrées dans l’historique d’audit et des notifica-
+tions sont envoyées aux utilisateurs concernés.
+1.4 Objectifs du projet
+Les objectifs principaux sont les suivants :
+• centraliser les données RH dans une application unique ;
+• sécuriser les accès selon les rôles définis dans accounts.models.Role ;
+• automatiser les validations métier afin de réduire les erreurs ;
+• offrir un tableau de bord adapté aux rôles utilisateur ;
+• assurer la traçabilité des actions sensibles par un module d’audit ;
+4
+
+
+===== PAGE 13 =====
+Plateforme RH Django CHAPITRE 1. PRÉSENTA TION DU CADRE DE PROJET
+• faciliter la communication entre employés et RH par une messagerie interne ;
+• permettre le suivi des formations, des points, des réclamations et du matériel ;
+• fournir des statistiques RH et salariales exploitables par les responsables.
+1.5 Choix du modèle de développement
+Le projet adopte une démarche incrémentale. Les migrations montrent une évolution progressive
+: modèle RH initial, ajout des notifications et de l’audit, enrichissement par les points, forma-
+tions, boutique, rémunération et réclamations, puis ajout du planning, du pointage et des tâches
+d’équipe. Cette progression correspond à une approche itérative adaptée à un projet métier :
+chaque module peut être conçu, implémenté, testé et amélioré indépendamment.
+Cette démarche est cohérente avec la structure du dépôt. Les règles métier communes
+sont centralisées dans hr/services.py, les validations de saisie dans hr/forms.py, les accès
+dans hr/permissions.py, et les workflows utilisateur dans hr/views.py. Les tests automa-
+tisés accompagnent ensuite les modules afin de vérifier les scénarios critiques.
+5
+
+
+===== PAGE 14 =====
+Plateforme RH Django CHAPITRE 1. PRÉSENTA TION DU CADRE DE PROJET
+1.6 Planning prévisionnel
+Tableau 1.1: Planning prévisionnel du projet
+Phase Travaux réalisés ou prévus
+Étude préalable Analyse du domaine RH, lecture du dépôt, iden-
+tification des modules et des contraintes.
+Analyse des besoins Définition des acteurs, besoins fonctionnels, be-
+soins non fonctionnels et cas d’utilisation.
+Conception Modélisation UML, diagrammes de classes,
+séquences, activités, architecture et schéma re-
+lationnel.
+Réalisation Développement Django des applications
+accounts, core et hr.
+Dashboard et statistiques Mise en place d’indicateurs par rôle, données de
+présence, demandes, paie, points et planning.
+Intégration chatbot RAG Module minimal intégré : route
+/assistant-rh, service HRRagService,
+fallback local et appel Grok optionnel.
+Tests et validation Tests Django portant sur l’authentification, les
+rôles, les formulaires, les workflows et les abus.
+Rédaction du rapport Production du présent rapport LaTeX, structuré
+selon une démarche PFA.
+1.7 Conclusion
+Ce chapitre a présenté le cadre général du projet et la nécessité d’une plateforme RH centralisée.
+L’étude de l’existant montre que la solution développée répond à des besoins réels de traçabilité,
+d’automatisation et de sécurisation. Le chapitre suivant détaille les besoins fonctionnels et non
+fonctionnels extraits du code source.
+6
+
+
+===== PAGE 15 =====
+Chapitre 2
+Spécification des besoins
+2.1 Introduction
+Dans ce chapitre, nous décrivons les besoins fonctionnels et non fonctionnels de la plateforme.
+Les besoins sont déduits des modèles, formulaires, vues, routes, services et tests du dépôt.
+2.2 Besoins fonctionnels
+L’application doit permettre l’authentification des utilisateurs, la gestion des profils et la redi-
+rection vers un tableau de bord adapté. Le module accounts définit quatre rôles : ADMIN,
+RESPONSABLE_RH, RESPONSABLE_HIERARCHIQUE et EMPLOYE. Le profil relie un utilisateur Django
+à un employé et indique si le compte est actif.
+La plateforme doit gérer les employés, les départements, les services et les postes. Les
+employés disposent d’un matricule unique, d’informations personnelles, d’une affectation or-
+ganisationnelle et d’un responsable hiérarchique. Le système doit empêcher les boucles dans la
+hiérarchie et permettre l’affichage d’un arbre hiérarchique filtrable.
+Le système doit gérer les congés et les demandes administratives. Un employé soumet
+une demande, un responsable autorisé la traite, puis le système met à jour le statut, notifie les
+acteurs concernés et inscrit l’action dans l’audit. Pour les congés, la déduction du solde est
+effectuée au moment de la validation, sauf pour les congés sans solde.
+La plateforme doit gérer les documents téléversés. Les extensions autorisées sont pdf,
+doc, docx, jpg, jpeg et png. La taille maximale vérifiée dans le code est de 5 Mo par fichier.
+Les documents peuvent être liés à un employé ou à une demande administrative.
+Le système doit fournir un tableau de bord. Pour un responsable RH ou administrateur, il
+affiche les employés actifs, les congés en attente, les demandes administratives, les présences, les
+formations, les commandes matériel, les réclamations et les rémunérations. Pour un manager, il
+affiche son équipe, les congés d’équipe, les présences, les retards et les tâches. Pour un employé,
+il affiche le solde de congés, les points, le dernier pointage, les demandes, les formations, le
+7
+
+
+===== PAGE 16 =====
+Plateforme RH Django CHAPITRE 2. SPÉCIFICA TION DES BESOINS
+planning, la boutique et le matériel.
+Le système doit gérer le pointage, le planning, les tâches, les formations, les messages
+RH, les actualités, la boutique, les réclamations et les points. Les services métier garantissent
+des opérations atomiques pour les transactions de points, les commandes et les soldes de congés.
+2.3 Besoins non fonctionnels
+• Sécurité : les vues sensibles doivent être protégées parlogin_required ou role_required.
+• Traçabilité : les opérations importantes doivent alimenter HistoriqueAction.
+• Fiabilité : les traitements de points et de congés doivent utiliser des transactions pour
+éviter les incohérences.
+• Ergonomie : les templates utilisent Bootstrap, Bootstrap Icons et un design responsive.
+• Maintenabilité : les règles métier sont séparées dans les services, les formulaires et les
+permissions.
+• Testabilité : la suite de tests Django couvre les scénarios d’accès, de validation et d’abus.
+2.4 Présentation des acteurs
+Tableau 2.1: Acteurs du système
+Acteur Rôle dans le système
+Administrateur Accède aux modules sensibles, gère les utilisateurs,
+les postes, la paie, les référentiels et l’audit.
+Responsable RH Gère les employés, demandes, formations, docu-
+ments, réclamations, commandes et communications
+RH.
+Responsable hiérar-
+chique
+Consulte son équipe et traite les congés de ses collab-
+orateurs directs.
+Employé Consulte ses informations, soumet des demandes,
+pointe, suit ses formations, commande du matériel et
+contacte les RH.
+8
+
+
+===== PAGE 17 =====
+Plateforme RH Django CHAPITRE 2. SPÉCIFICA TION DES BESOINS
+2.5 Description détaillée des cas d’utilisation
+2.5.1 S’authentifier
+Tableau 2.2: Fiche du cas d’utilisation : authentification
+Acteur Tous les utilisateurs.
+Objectif Accéder à l’application avec un compte actif.
+Préconditions L’utilisateur possède un compte Django et un profil
+actif.
+Postconditions L’utilisateur est redirigé vers le tableau de bord.
+Scénario nominal L’utilisateur saisit son login et son mot de passe ; la
+vue login_view appelle authenticate ; si le profil
+est actif, Django ouvre la session.
+Scénario alternatif Si les identifiants sont invalides ou le profil inactif, un
+message d’erreur est affiché.
+2.5.2 Gérer un dossier employé
+Tableau 2.3: Fiche du cas d’utilisation : gestion d’un em-
+ployé
+Acteur Administrateur ou responsable RH.
+Objectif Créer, modifier, consulter, archiver et enrichir un
+dossier employé.
+Préconditions L’acteur est connecté avec un rôle autorisé.
+Postconditions Le dossier employé est sauvegardé et l’action est au-
+ditée.
+Scénario nominal L’acteur ouvre le formulaire, saisit les informations,
+le formulaire EmployeForm valide les champs, puis la
+vue employe_save enregistre l’employé.
+Scénario alternatif Si le matricule ou l’email existe déjà, ou si une date
+est incohérente, le formulaire retourne une erreur.
+2.5.3 Soumettre et valider un congé
+9
+
+
+===== PAGE 18 =====
+Plateforme RH Django CHAPITRE 2. SPÉCIFICA TION DES BESOINS
+Tableau 2.4: Fiche du cas d’utilisation : traitement d’un
+congé
+Acteur Employé, manager, responsable RH ou administra-
+teur.
+Objectif Soumettre puis traiter une demande de congé.
+Préconditions L’employé possède un profil lié et un solde suffisant
+pour un congé payé.
+Postconditions La demande change de statut, le solde est déduit ou
+conservé selon le type, et l’employé est notifié.
+Scénario nominal L’employé soumet la demande ; le responsable au-
+torisé valide ; le service deduire_solde_conge véri-
+fie le solde et enregistre le mouvement.
+Scénario alternatif Si la période est passée, inversée, chevauche une de-
+mande active ou dépasse le solde, la demande est re-
+jetée par les validations.
+2.5.4 Pointer l’entrée et la sortie
+Tableau 2.5: Fiche du cas d’utilisation : pointage
+Acteur Employé.
+Objectif Enregistrer la présence journalière et calculer les
+points.
+Préconditions L’utilisateur est connecté et lié à un employé.
+Postconditions Un pointage est créé ou fermé, les heures et points sont
+calculés.
+Scénario nominal L’employé pointe l’entrée ; en fin de journée il pointe
+la sortie ; le service pointer_sortie calcule les
+heures, le statut et applique une transaction de points.
+Scénario alternatif Un double pointage ou une sortie sans entrée ouverte
+est refusé.
+2.5.5 Commander du matériel
+Tableau 2.6: Fiche du cas d’utilisation : boutique interne
+Acteur Employé, responsable RH ou administrateur.
+10
+
+
+===== PAGE 19 =====
+Plateforme RH Django CHAPITRE 2. SPÉCIFICA TION DES BESOINS
+Objectif Commander un produit en utilisant le solde de points.
+Préconditions Le produit est actif, en stock et l’employé possède
+suffisamment de points.
+Postconditions La commande est créée, approuvée, livrée ou refusée
+selon l’action RH.
+Scénario nominal L’employé crée une commande ; le RH approuve ;
+le service approuver_commande déduit les points et
+diminue le stock.
+Scénario alternatif Si le stock ou les points sont insuffisants, la com-
+mande n’est pas acceptée. Une annulation rembourse
+les points déjà déduits.
+2.5.6 Traiter une réclamation
+Tableau 2.7: Fiche du cas d’utilisation : réclamation RH
+Acteur Employé, responsable RH ou administrateur.
+Objectif Déclarer un problème RH et recevoir une réponse.
+Préconditions Le sujet et la description sont renseignés.
+Postconditions La réclamation est traitée, notifiée et éventuellement
+compensée en points.
+Scénario nominal L’employé soumet une réclamation ; le RH répond ;
+si une compensation est accordée, une transaction de
+points est appliquée une seule fois.
+Scénario alternatif Une réclamation sans sujet ou description est refusée.
+11
+
+
+===== PAGE 20 =====
+Plateforme RH Django CHAPITRE 2. SPÉCIFICA TION DES BESOINS
+2.6 Diagramme global des cas d’utilisation
+Employé
+Manager
+Responsable RH
+Admin
+Plateforme RH Django
+S’authentifier
+Consulter tableau
+de bord
+Exporter statistiques
+Soumettre demande
+de congé
+Pointer entrée
+et sortie
+Commander matériel
+Annuler commande
+Consulter équipe
+V alider / refuser
+congés
+Créer planning
+et shifts
+Suivre tâches
+d’équipe
+Gérer employés
+et organisation
+Traiter demandes
+administratives
+Gérer documents
+Gérer formations
+et actualités
+Traiter réclamations
+Gérer paieGérer utilisateurs
+et rôles
+Consulter historique
+et audit Notifier acteurs
+Mettre à jour
+les points
+«include» «extend»
+Figure 2.1: Diagramme global des cas d’utilisation
+2.7 Conclusion
+Ce chapitre a détaillé les besoins fonctionnels, non fonctionnels, les acteurs et les principaux
+cas d’utilisation. Les exigences montrent que la plateforme couvre un périmètre RH large et
+que les règles métier sont présentes dans le code. Le chapitre suivant présente la conception du
+système.
+12
+
+
+===== PAGE 21 =====
+Chapitre 3
+Conception du système
+3.1 Introduction
+Ce chapitre présente la conception de la plateforme RH Django. Il décrit l’organisation fonc-
+tionnelle du système, les principaux cas d’utilisation, la structure des données, l’architecture
+logicielle et les choix techniques retenus pour relier les différents modules : gestion des em-
+ployés, congés, pointage, planning, boutique interne, notifications, audit et assistant RH.
+3.2 Vue fonctionnelle
+3.2.1 Diagramme global des cas d’utilisation
+Le diagramme global ci-dessous présente les principaux modules de la plateforme sous une
+forme UML classique. Les acteurs sont placés à l’extérieur de la frontière du système, tan-
+dis que les cas d’utilisation sont regroupés dans des packages fonctionnels afin de limiter les
+croisements.
+13
+
+
+===== PAGE 22 =====
+Plateforme RH Django CHAPITRE 3. CONCEPTION DU SYSTÈME
+Figure 3.1: Diagramme global des cas d’utilisation de la plateforme RH
+Ce diagramme met en évidence les quatre familles d’acteurs : employé, manager, re-
+sponsable RH et administrateur. Les relations <<include>> sont utilisées uniquement pour des
+traitements obligatoires réutilisés : calcul des indicateurs du dashboard, mise à jour des points
+lors d’une commande, récupération du contexte documentaire et appel à Grok pour le chatbot.
+3.2.2 Cas d’utilisation détaillés du dashboard et du chatbot
+Le diagramme suivant détaille deux fonctionnalités différenciantes : le pilotage statistique et
+l’assistant RH RAG/Grok. Il sépare les actions principales des sous-traitements obligatoires et
+des scénarios optionnels.
+14
+
+
+===== PAGE 23 =====
+Plateforme RH Django CHAPITRE 3. CONCEPTION DU SYSTÈME
+Figure 3.2: Diagramme de cas d’utilisation détaillé du dashboard et du chatbot RAG
+La consultation du dashboard inclut uniquement les traitements nécessaires à son af-
+fichage, notamment le calcul des indicateurs et la présentation graphique. Le filtrage des don-
+nées et l’export des statistiques sont représentés en <<extend>>, car ils correspondent à des
+actions optionnelles déclenchées selon le besoin de l’utilisateur. Pour le chatbot, la vérification
+de la question, la récupération du contexte et la construction du prompt sont des sous-traitements
+obligatoires. L’appel à l’API Grok reste un scénario conditionnel, activé lorsque la configura-
+tion externe est disponible.
+3.3 Vue statique
+3.3.1 Diagramme de classes métier principal
+Le diagramme de classes principal a été reconstruit à partir des modèles Django réellement
+présents dans le projet. Il se concentre sur les entités métier centrales et conserve les attributs,
+méthodes et cardinalités nécessaires à la compréhension.
+15
+
+
+===== PAGE 24 =====
+Plateforme RH Django CHAPITRE 3. CONCEPTION DU SYSTÈME
+Figure 3.3: Diagramme de classes métier principal
+La classe Employe reste le pivot du domaine RH. Elle est reliée à l’organisation, aux
+demandes, au pointage, au planning, au compte de points, aux transactions, aux commandes et
+aux réclamations. Les cardinalités reprennent les relations ForeignKey et OneToOneField du
+code, ce qui rend le diagramme plus cohérent qu’une simple liste de tables.
+3.3.2 Classes utilisateurs, rôles et audit
+Le diagramme suivant isole la partie identité et traçabilité, afin de ne pas surcharger le dia-
+gramme métier principal.
+16
+
+
+===== PAGE 25 =====
+Plateforme RH Django CHAPITRE 3. CONCEPTION DU SYSTÈME
+Figure 3.4: Diagramme de classes des utilisateurs, rôles, notifications et actions d’audit
+La classe UtilisateurProfile prolonge le modèle Django User avec un rôle métier,
+un état actif et un lien optionnel versEmploye. Les propriétés is_rh, is_manager et is_admin_role
+justifient les contrôles d’accès utilisés dans les vues. Les notifications et l’historique d’actions
+matérialisent la traçabilité applicative.
+3.3.3 Classes du chatbot RAG/Grok
+Le chatbot étant une fonctionnalité différenciante, il est présenté dans un diagramme de classes
+complémentaire.
+17
+
+
+===== PAGE 26 =====
+Plateforme RH Django CHAPITRE 3. CONCEPTION DU SYSTÈME
+Figure 3.5: Diagramme de classes du module chatbot RH RAG/Grok
+Le service HRRagService encapsule les responsabilités de récupération du contexte,
+construction du prompt, appel optionnel à Grok et génération d’une réponse locale de secours.
+La classe RagAnswer structure la réponse retournée à la vue chatbot_rh, avec l’information
+indiquant si Grok a réellement été utilisé.
+3.4 Vue applicative
+3.4.1 Architecture logicielle
+L’architecture logicielle repose sur une application Django structurée en couches. La figure
+suivante montre les responsabilités principales : interface, routage, vues, services métier, for-
+mulaires, ORM, stockage et API externe.
+18
+
+
+===== PAGE 27 =====
+Plateforme RH Django CHAPITRE 3. CONCEPTION DU SYSTÈME
+Figure 3.6: Architecture logicielle de la plateforme RH
+Cette architecture montre que les traitements complexes ne sont pas dispersés dans les
+templates. Les vues orchestrent les workflows, les formulaires valident les entrées, les services
+assurent les opérations transactionnelles et l’ORM persiste les données. Le module hr.chatbot
+complète cette architecture avec une façade RAG pouvant fonctionner avec Grok ou en mode
+local.
+3.4.2 Diagramme de composants
+Le diagramme de composants met en évidence les principaux modules applicatifs et leurs dépen-
+dances.
+19
+
+
+===== PAGE 28 =====
+Plateforme RH Django CHAPITRE 3. CONCEPTION DU SYSTÈME
+Figure 3.7: Diagramme de composants applicatifs
+Le composant accounts gère l’identité, les profils et les rôles. Le composant core porte
+le dashboard. Le composant hr.views orchestre les workflows métier, tandis quehr.services
+centralise les transactions, notifications et audits. Le composant hr.chatbot ajoute une brique
+IA contrôlée par configuration.
+3.5 Vue dynamique
+3.5.1 Séquence du dashboard et des statistiques
+Le premier scénario dynamique retenu concerne le tableau de bord, car il synthétise de nombreux
+modules et adapte les indicateurs au rôle connecté.
+20
+
+
+===== PAGE 29 =====
+Plateforme RH Django CHAPITRE 3. CONCEPTION DU SYSTÈME
+Figure 3.8: Diagramme de séquence du calcul des indicateurs du tableau de bord
+La séquence montre la récupération des données par la vue dashboard. Selon le profil,
+la vue interroge les modèles Employe, DemandeConge, DemandeAdministrative, Pointage,
+PlanningShift, TacheEquipe, CommandeProduit, ReclamationRH et Remuneration. Les
+résultats sont ensuite transformés en cartes KPI dans le template.
+3.5.2 Séquence du workflow boutique et points
+Le deuxième scénario met en avant un traitement plus spécifique au projet : la commande de
+matériel avec contrôle du stock et transaction de points.
+21
+
+
+===== PAGE 30 =====
+Plateforme RH Django CHAPITRE 3. CONCEPTION DU SYSTÈME
+Figure 3.9: Diagramme de séquence du workflow boutique et points
+Ce diagramme illustre les interactions entre l’employé, le formulaire de commande,
+la vue shop, le service de points et la base de données. Le formulaire vérifie le stock et le
+solde disponible. Lors de l’approbation, approuver_commande applique une transaction atom-
+ique, diminue le stock et déclenche audit et notification. Ce scénario montre une valeur métier
+supérieure à un CRUD classique.
+3.5.3 Séquence du chatbot RH RAG/Grok
+Le troisième scénario décrit le nouveau module HRRagService. Il fonctionne en mode local si
+aucune clé Grok n’est configurée et appelle l’API Grok lorsque GROK_API_KEY est disponible.
+22
+
+
+===== PAGE 31 =====
+Plateforme RH Django CHAPITRE 3. CONCEPTION DU SYSTÈME
+Figure 3.10: Diagramme de séquence de l’assistant RH RAG avec API Grok
+La séquence montre l’utilisateur, le template, la vue chatbot_rh, le service RAG, les
+sources documentaires et l’API Grok. Le service récupère un contexte depuis les documents
+du projet, construit un prompt enrichi avec le rôle de l’utilisateur, puis produit une réponse.
+En l’absence de clé API, le système reste cohérent grâce à un mode dégradé local basé sur les
+extraits récupérés.
+3.6 Diagrammes d’activité
+3.6.1 Activité de consultation des statistiques du dashboard
+Le premier diagramme d’activité présente un scénario métier transversal : la consultation des
+indicateurs du tableau de bord. Il fait intervenir l’utilisateur, l’interface, le backend, les services
+métier et la base de données.
+23
+
+
+===== PAGE 32 =====
+Plateforme RH Django CHAPITRE 3. CONCEPTION DU SYSTÈME
+Figure 3.11: Diagramme d’activité de consultation des statistiques du tableau de bord
+Ce diagramme respecte les règles UML d’un flux d’activité : il démarre par un noeud ini-
+tial, se termine par un noeud final, sépare les responsabilités en swimlanes et utilise des décisions
+avec gardes explicites. Le scénario couvre les contrôles d’accès, l’agrégation des données RH,
+la gestion du cas où aucune donnée n’est disponible et l’affichage final des KPI et graphiques.
+3.6.2 Activité du chatbot RAG/Grok
+L’activité du chatbot décrit le fonctionnement interne du module IA intégré, depuis la question
+utilisateur jusqu’à l’affichage de la réponse contrôlée.
+24
+
+
+===== PAGE 33 =====
+Plateforme RH Django CHAPITRE 3. CONCEPTION DU SYSTÈME
+Figure 3.12: Diagramme d’activité du chatbot RH RAG/Grok
+Le flux distingue les cinq responsabilités attendues : utilisateur, frontend, backend/API,
+module RAG et API Grok. Les décisions possèdent des gardes explicites : question vide, ab-
+sence de contexte pertinent, clé Grok absente ou erreur API. Ainsi, l’assistant peut afficher une
+réponse prudente en mode fallback local sans bloquer l’application pendant les démonstrations.
+3.7 Architecture IA/RAG
+Le module RAG ajouté au dépôt est volontairement léger mais cohérent : il récupère des ex-
+traits depuis des documents internes, enrichit le prompt et délègue la génération à Grok si la
+configuration est disponible.
+25
+
+
+===== PAGE 34 =====
+Plateforme RH Django CHAPITRE 3. CONCEPTION DU SYSTÈME
+Figure 3.13: Architecture du module assistant RH RAG/Grok
+L’architecture RAG prend en compte la confidentialité : le prompt contient le rôle de
+l’utilisateur, le contexte récupéré est borné, et le service ne doit pas inventer d’informations
+personnelles. La récupération documentaire permet à l’assistant RH d’exploiter les informations
+internes utiles tout en gardant un périmètre contrôlé.
+3.8 Déploiement
+3.8.1 Architecture de déploiement cible sur Vercel
+Le diagramme suivant présente l’architecture cible de déploiement prévue sur V ercel. Il ne
+s’agit pas d’une mise en production déjà disponible publiquement, mais d’une organisation pro-
+fessionnelle préparant la séparation entre interface utilisateur, services backend/API, base de
+données, module IA/RAG et services externes.
+26
+
+
+===== PAGE 35 =====
+Plateforme RH Django CHAPITRE 3. CONCEPTION DU SYSTÈME
+Figure 3.14: Diagramme de déploiement cible de la plateforme sur V ercel
+La solution est préparée pour un déploiement sur V ercel à travers le fichiervercel.json.
+Le client communique en HTTPS avec le réseau V ercel Edge/CDN, puis les requêtes sont trans-
+mises à l’application Django exécutée via WSGI Python. Les données métier doivent être
+externalisées vers une base compatible PostgreSQL, tandis que le module RAG interroge un
+stockage documentaire contrôlé avant d’appeler l’API Grok. Les paramètres sensibles sont
+fournis par variables d’environnement, notamment DJANGO_SECRET_KEY, DATABASE_URL et
+GROK_API_KEY.
+3.9 Dictionnaire de données synthétique
+Tableau 3.1: Dictionnaire de données synthétique
+Entité Attributs clés Rôle
+UtilisateurProfile role, actif, employe Lie un compte Django à un rôle
+métier et à un employé.
+Employe matricule, nom, email,
+responsable
+Porte les données RH et la structure
+hiérarchique.
+27
+
+
+===== PAGE 36 =====
+Plateforme RH Django CHAPITRE 3. CONCEPTION DU SYSTÈME
+Entité Attributs clés Rôle
+DemandeConge type, dates, statut, em-
+ploye
+Gère le cycle des congés et ab-
+sences.
+Pointage date, heure_entree,
+heure_sortie, statut
+Enregistre la présence et les points
+calculés.
+PlanningShift titre, employe, dates,
+statut
+Planifie les shifts et détecte les con-
+flits.
+ComptePoints solde_points Stocke le solde de points d’un em-
+ployé.
+TransactionPoints type, source,
+points, solde_avant,
+solde_apres
+Trace les gains, achats et rem-
+boursements.
+CommandeProduit produit, quantite, statut,
+points_deduits
+Gère les commandes de matériel.
+ReclamationRH sujet, type, statut,
+points_accordes
+Suit les réclamations et compensa-
+tions.
+HistoriqueAction action, details, utilisa-
+teur, entite
+Assure l’audit des opérations im-
+portantes.
+HRRagService api_key, api_url, model Récupère le contexte documentaire
+et génère une réponse RH.
+3.10 Conclusion
+Ce chapitre a été réorganisé autour de diagrammes plus professionnels et de scénarios métier
+plus représentatifs. La conception met désormais en avant la richesse réelle de la plateforme :
+pilotage RH, transactions de points, boutique, services métier, audit, notifications et assistant
+RAG/Grok. Le chapitre suivant présente la réalisation technique de ces choix.
+28
+
+
+===== PAGE 37 =====
+Chapitre 4
+Réalisation du système
+4.1 Introduction
+Dans ce chapitre, nous présentons la réalisation technique de la plateforme. Nous décrivons
+l’environnement, les technologies, la structure du code, les modules implémentés, le dash-
+board, la sécurité, les tests et les interfaces prévues pour les captures d’écran.
+4.2 Environnement de développement
+4.2.1 Environnement matériel
+Le projet a été exécuté localement sur un poste Windows. Le dépôt est situé dans un répertoire
+utilisateur OneDrive et utilise une base SQLite locale. Cet environnement est adapté à une phase
+de développement, de démonstration et de validation fonctionnelle.
+4.2.2 Environnement logiciel
+L’environnement logiciel détecté comprend Python 3.12, Django 5.0.6 et Pillow 10.3.0. Une
+base db.sqlite3 est présente dans le dépôt. Les migrations sont appliquées pour les applica-
+tions accounts, auth, contenttypes, hr et sessions. Les tests Django ont été exécutés avec
+succès : 40 tests ont été détectés et validés.
+29
+
+
+===== PAGE 38 =====
+Plateforme RH Django CHAPITRE 4. RÉALISA TION DU SYSTÈME
+4.3 Technologies utilisées
+Tableau 4.1: Technologies utilisées dans le projet
+Technologie Rôle dans le projet
+Python Langage principal utilisé par Django et les scripts de
+seed.
+Django 5.0.6 Framework web assurant ORM, routage, vues, tem-
+plates, sessions, authentification et tests.
+SQLite Base de données locale utilisée pour le développement et
+la démonstration.
+Pillow Bibliothèque utilisée pour la gestion des champs image
+dans Django.
+Bootstrap 5.3 CDN Framework CSS utilisé par les templates pour les com-
+posants visuels.
+Bootstrap Icons Icônes utilisées dans la navigation, le dashboard et les
+boutons.
+HTML/CSS/JavaScriptInterface utilisateur, interactions de sidebar, calcul des
+jours de congés et confirmations.
+LaTeX/TikZ Rédaction du présent rapport et intégration des dia-
+grammes.
+4.4 Architecture du projet
+Le projet est structuré autour des dossiers suivants :
+• config : configuration Django, URLs principales, WSGI et ASGI ;
+• accounts : rôles, profils, authentification, contexte utilisateur ;
+• core : page d’accueil et tableau de bord ;
+• hr : modèles RH, formulaires, permissions, services, vues, tests et commandes ;
+• templates : pages HTML pour les modules fonctionnels ;
+• static : CSS, JavaScript et favicon ;
+• media : fichiers téléversés localement ;
+• db.sqlite3 : base de données locale.
+30
+
+
+===== PAGE 39 =====
+Plateforme RH Django CHAPITRE 4. RÉALISA TION DU SYSTÈME
+4.5 Structure du code source
+La structure du code met en évidence une séparation des responsabilités. Les modèles de don-
+nées sont dans hr/models.py. Les formulaires et validations de saisie sont dans hr/forms.py.
+Les règles d’autorisation sont dans hr/permissions.py. Les traitements métier atomiques
+sont dans hr/services.py. Les routes sont déclarées dans hr/urls.py, accounts/urls.py
+et core/urls.py. Les vues assurent le lien entre les requêtes, les formulaires, les services et
+les templates.
+4.6 Implémentation des modules principaux
+4.6.1 Authentification et rôles
+L’authentification repose sur le système intégré de Django. La vuelogin_view utilise authenticate,
+vérifie l’existence d’un profil actif et ouvre la session avec login. Les rôles sont définis dans
+accounts.models.Role. Les permissions sont ensuite appliquées avec le décorateurrole_required
+et les fonctions can_manage_hr et can_view_employees.
+4.6.2 Gestion des employés et de l’organisation
+Le module des employés gère les informations personnelles, l’affectation à un département, un
+service, un poste et un responsable. Le modèle Employe contient une méthode clean qui em-
+pêche un employé d’être son propre responsable ou de créer une boucle hiérarchique. La fonc-
+tion build_hierarchy_tree construit un arbre visible à partir des relations entre employés.
+4.6.3 Congés et demandes administratives
+Les congés sont représentés parDemandeConge. Les validations vérifient les dates, les chevauche-
+ments et le solde disponible. Lors de la validation, le service deduire_solde_conge applique
+une déduction transactionnelle et crée un mouvement de solde. Les demandes administratives
+suivent un cycle similaire avec un statut, une réponse et un traitement RH.
+4.6.4 Documents, notifications et audit
+Le module documentaire accepte des pièces jointes selon des extensions autorisées et une limite
+de taille. Les notifications sont créées par les servicesnotify, notify_employee et notify_rh_and_admin.
+Les actions importantes sont enregistrées dans HistoriqueAction, ce qui permet une consul-
+tation filtrée par rôle, action, module ou date.
+31
+
+
+===== PAGE 40 =====
+Plateforme RH Django CHAPITRE 4. RÉALISA TION DU SYSTÈME
+4.6.5 Pointage, planning et tâches
+Le pointage repose sur les services pointer_entree et pointer_sortie. Le système interdit
+un double pointage, calcule les heures, détecte le retard ou la sortie anticipée, puis applique des
+points. Le planning permet de créer des shifts individuels ou groupés et le modèle empêche les
+chevauchements ou l’affectation d’un employé en congé validé. Les tâches d’équipe permettent
+de suivre des travaux opérationnels par priorité et statut.
+4.6.6 Formations, messagerie RH et actualités
+Les formations sont créées par les RH et affectées à des employés. Lorsqu’une formation est
+terminée, des points peuvent être attribués une seule fois. La messagerie RH reste une conversa-
+tion interne entre un employé et les RH, tandis que l’assistant RH IA est exposé séparément via
+/assistant-rh. Les actualités permettent aux RH de publier des communications internes.
+4.6.7 Boutique, points et réclamations
+Le système de points repose sur ComptePoints et TransactionPoints. Les transactions sont
+atomiques et empêchent un solde négatif. La boutique interne utilise ces points pour commander
+du matériel ; l’approbation déduit les points et diminue le stock. Les réclamations RH peuvent
+aboutir à une réponse, un statut ou une compensation en points, protégée contre le double ajout
+par le champ action_points_appliquee.
+4.6.8 Paie et analyses salariales
+Le module paie est limité aux rôles autorisés. Il calcule le salaire minimum, maximum, moyen,
+médian, ainsi que des agrégations par département et par poste. La modification d’une rémunéra-
+tion est réservée à l’administrateur.
+4.7 Implémentation du dashboard et des statistiques
+Le dashboard est implémenté dans core/views.py et templates/dashboard/index.html.
+Il adapte les indicateurs au rôle de l’utilisateur. Pour les RH, il met en avant les employés actifs,
+les congés en attente, les demandes administratives, les présences, les formations, les com-
+mandes, les réclamations et la paie. Pour le manager, il affiche les indicateurs d’équipe. Pour
+l’employé, il présente le solde de congés, le solde de points, le dernier pointage, les demandes,
+les formations, le planning et le matériel.
+32
+
+
+===== PAGE 41 =====
+Plateforme RH Django CHAPITRE 4. RÉALISA TION DU SYSTÈME
+4.8 Implémentation du chatbot RAG avec API Grok
+Le module chatbot est implémenté sous forme minimale et extensible. Le fichierhr/chatbot.py
+définit HRRagService, responsable de la récupération de contexte, de la construction du prompt
+et de l’appel optionnel à l’API Grok. La route /assistant-rh est déclarée dans hr/urls.py
+et rend le template templates/chatbot/index.html. Le lien est également ajouté à la navi-
+gation principale.
+Le service récupère des extraits depuis des documents internes commeREADME.md, TABLES_CODE_MAP.md
+et TRAITEMENTS_LOGIQUES_MAP.md. Ces extraits constituent le contexte RAG. Le prompt est
+enrichi avec le rôle de l’utilisateur afin de rappeler les règles de confidentialité. SiGROK_API_KEY
+est configurée, le service appelle l’API Grok. Sinon, il fonctionne en mode local et affiche une
+réponse fondée sur les extraits récupérés. Cette approche permet de démontrer le module sans
+exposer de clé API dans le dépôt.
+4.9 Sécurité et gestion des accès
+La sécurité est assurée par plusieurs niveaux. Les pages nécessitant une session utilisentlogin_required.
+Les pages sensibles utilisent role_required. Les requêtes modifiant l’état sont protégées par
+require_POST. Les managers ne peuvent consulter que leur périmètre fonctionnel. Les em-
+ployés ne peuvent accéder qu’à leurs propres formations, réclamations, conversations et de-
+mandes. Les fichiers téléversés sont contrôlés par extension et taille.
+4.10 Tests et validation technique
+La suite de tests dans hr/tests.py couvre l’authentification, les formulaires, les permissions,
+la hiérarchie, les soldes, les points, la boutique, les réclamations, les documents, les formations,
+l’audit et les conversations RH. Une exécution locale a validé 40 tests.
+Tableau 4.2: Tableau de validation technique
+Module Scénario Résultat attendu Résultat
+obtenu
+Statut
+Authentification Chargement login et dash-
+board protégé
+Redirection sans
+session puis accès
+après login
+Conforme OK
+Employés Manager accède à un em-
+ployé hors périmètre
+Refus ou 404 Conforme OK
+33
+
+
+===== PAGE 42 =====
+Plateforme RH Django CHAPITRE 4. RÉALISA TION DU SYSTÈME
+Module Scénario Résultat attendu Résultat
+obtenu
+Statut
+Congés V alidation d’un congé avec
+solde insuffisant
+Blocage Conforme OK
+Points Achat supérieur au solde Solde inchangé Conforme OK
+Boutique Approbation puis tentative
+double
+Déduction unique Conforme OK
+Documents Upload .exe Refus Conforme OK
+Formation Completion deux fois Points attribués une
+seule fois
+Conforme OK
+Audit Filtrage par
+rôle/module/action
+Page chargée avec
+résultat
+Conforme OK
+4.11 Principales interfaces graphiques
+Les captures suivantes présentent les principaux onglets opérationnels de la plateforme HR An-
+thr. Elles illustrent la richesse fonctionnelle du tableau de bord et des modules associés : pilotage
+RH, organisation interne, pointage, planification et boutique matériel.
+4.11.1 Onglet Tableau de bord
+Figure 4.1: Tableau de bord des indicateurs RH et des actions rapides
+Cette interface constitue la vue d’accueil du responsable RH ou de l’administrateur. Elle affiche
+les indicateurs clés tels que les employés actifs, les congés en attente, les demandes adminis-
+34
+
+
+===== PAGE 43 =====
+Plateforme RH Django CHAPITRE 4. RÉALISA TION DU SYSTÈME
+tratives, les présences du jour, les formations, les commandes matériel, les réclamations et la
+paie. Les cartes d’actions rapides facilitent l’accès aux traitements importants comme l’ajout
+d’un employé, la validation des congés ou la publication d’une actualité.
+4.11.2 Onglet Départements
+Figure 4.2: Gestion de l’organisation interne : départements, services et postes
+Cette capture présente le module d’organisation interne avec les ongletsDépartements, Services
+et Postes. Le tableau liste les départements, leurs descriptions et les actions disponibles. Cette
+interface est importante car elle structure les fiches employés et permet d’organiser les affecta-
+tions RH autour d’une hiérarchie métier claire.
+35
+
+
+===== PAGE 44 =====
+Plateforme RH Django CHAPITRE 4. RÉALISA TION DU SYSTÈME
+4.11.3 Onglet Présence / Pointage
+Figure 4.3: Suivi des présences et des pointages check-in/check-out
+Cette interface regroupe les indicateurs de présence du jour : présences, retards, pointages ou-
+verts et heures enregistrées. Elle propose également les boutonsPointer l'entrée et Pointer
+la sortie , puis affiche un historique détaillé avec employé, date, shift, entrée, sortie, heures,
+statut et points. Elle prépare l’exploitation future du pointage pour le contrôle de présence et
+l’attribution de paiements liés au temps passé sur site.
+4.11.4 Onglet Planning / Shifts
+Figure 4.4: Planification des shifts et création groupée de planning
+36
+
+
+===== PAGE 45 =====
+Plateforme RH Django CHAPITRE 4. RÉALISA TION DU SYSTÈME
+L’onglet de planning permet de filtrer les shifts par période, statut et employé, puis de créer
+un planning par service, département, entreprise ou sélection. Les cartes de shifts montrent
+l’employé, le statut, le lieu, la durée et les actions de mise à jour. Cette interface renforce la
+planification opérationnelle et réduit le risque de chevauchement ou d’affectation incohérente.
+4.11.5 Onglet Boutique employé / Matériel
+Figure 4.5: Boutique employé et commande de matériel avec points
+Cette interface présente le catalogue matériel accessible à l’employé ou au responsable autorisé.
+Elle affiche le solde de points disponible, les produits, leur coût en points, le stock et un for-
+mulaire de commande. Le module met en valeur la logique d’engagement de HR Anthr, car
+les commandes sont liées au système de points, au stock disponible et au suivi des demandes
+matériel.
+37
+
+
+===== PAGE 46 =====
+Plateforme RH Django CHAPITRE 4. RÉALISA TION DU SYSTÈME
+4.12 Difficultés rencontrées et solutions apportées
+Au cours de la réalisation du projet, nous avons rencontré plusieurs difficultés liées à la taille
+de l’application et à la diversité des modules développés. La première difficulté concernait
+l’organisation du code source, car la plateforme intègre l’authentification, les rôles, les em-
+ployés, les congés, les demandes administratives, le pointage, le planning, la boutique, les ré-
+clamations, les points, le dashboard et le chatbot intelligent. Pour limiter la complexité, nous
+avons adopté une structuration modulaire fondée sur les applications Django accounts, core
+et hr, avec une séparation entre modèles, formulaires, vues, permissions et services métier.
+Une autre difficulté importante a concerné la gestion des rôles et des permissions. Le
+système devait permettre à chaque utilisateur d’accéder uniquement aux informations corre-
+spondant à son profil, notamment pour distinguer les droits de l’administrateur, du responsable
+RH, du responsable hiérarchique et de l’employé. Pour résoudre ce problème, nous avons cen-
+tralisé les contrôles dans le profil utilisateur et dans les fonctions de permission, puis nous avons
+protégé les vues sensibles par des décorateurs adaptés.
+La cohérence des données a également représenté un enjeu majeur. Certaines opérations
+peuvent avoir des effets sur plusieurs entités, comme la validation d’un congé, la déduction
+d’un solde, la commande d’un produit ou l’attribution de points. Afin d’éviter les incohérences,
+nous avons placé les traitements critiques dans des services métier et appliqué des validations
+au niveau des modèles et des formulaires. Cette approche améliore la fiabilité des workflows et
+facilite leur test.
+La réalisation du dashboard a demandé une attention particulière, car les indicateurs
+doivent être adaptés au rôle de l’utilisateur connecté. Les données proviennent de plusieurs
+modules : employés, congés, demandes, pointages, formations, commandes, réclamations et
+rémunérations. Pour obtenir un affichage clair, nous avons organisé les calculs dans la vue du
+dashboard et présenté les résultats sous forme de cartes synthétiques et d’indicateurs facilement
+lisibles.
+L’intégration du chatbot RAG/Grok a constitué une difficulté supplémentaire. Le module
+devait pouvoir interroger un contexte documentaire sans exposer de clé API dans le dépôt et sans
+bloquer l’application en cas d’absence de configuration externe. La solution adoptée consiste
+à récupérer des extraits depuis les documents internes du projet, à construire un prompt enrichi
+et à appeler l’API Grok uniquement si la variable GROK_API_KEY est disponible. Dans le cas
+contraire, un mode local fournit une réponse prudente à partir du contexte récupéré.
+Enfin, la préparation du déploiement cible sur V ercel a nécessité une adaptation de la
+configuration. Le projet a été préparé avec un fichier vercel.json, un fichier .env.example
+sans secret réel et une lecture des variables d’environnement dans les paramètres Django. Cette
+préparation facilite une évolution vers un hébergement cloud avec une base externe compatible
+PostgreSQL, tout en conservant un fonctionnement local simple pendant le développement.
+38
+
+
+===== PAGE 47 =====
+Plateforme RH Django CHAPITRE 4. RÉALISA TION DU SYSTÈME
+4.13 Conclusion
+Ce chapitre a présenté la réalisation concrète de la plateforme. Le projet offre une couverture
+fonctionnelle large et s’appuie sur des règles métier explicites, des contrôles d’accès, des val-
+idations et des tests automatisés. Les modules réalisés forment ainsi une base cohérente pour
+l’exploitation quotidienne de la solution RH.
+39
+
+
+===== PAGE 48 =====
+Conclusion générale
+Ce projet a permis de concevoir et de réaliser une plateforme web de gestion des ressources hu-
+maines avec Django. L’application centralise les opérations RH essentielles : authentification,
+rôles, employés, organisation, congés, demandes administratives, documents, notifications, au-
+dit, pointage, planning, tâches, formations, messages RH, actualités, boutique, réclamations,
+points et analyses salariales.
+L’analyse du code montre que la solution ne se limite pas à des pages CRUD. Elle intègre
+des règles métier importantes : contrôle des profils actifs, limitation des accès par rôle, protec-
+tion contre les boucles hiérarchiques, validation des dates, vérification des soldes, transactions
+atomiques de points, contrôle du stock, gestion des notifications et journalisation des actions.
+La présence de 40 tests automatisés confirme également une démarche de validation structurée.
+La plateforme pourra être prolongée par une évolution ciblée liée au suivi de présence
+sur site.
+Perspectives et améliorations futures
+La perspective d’amélioration retenue pour la suite du projet est la suivante :
+• enrichir l’espace employé par un module de gestion des paiements destiné aux ouvriers et
+aux employés de terrain. Ce module pourrait s’appuyer sur le système de pointage check-
+in/check-out afin de vérifier la présence effective sur site et de faciliter l’attribution des
+paiements en fonction du temps de présence ou des interventions réalisées ;
+Le module futur de paiement basé sur le check-in/check-out permettrait de renforcer
+l’automatisation des processus internes, de réduire les traitements manuels et d’améliorer la
+traçabilité des paiements liés à la présence sur site.
+En conclusion, la solution développée constitue une base solide pour une gestion RH
+intégrée. Elle répond aux besoins fondamentaux d’automatisation, de traçabilité, de sécurité
+et de pilotage. L’assistant RAG/Grok intégré complète cette plateforme tout en respectant la
+confidentialité des données RH et les règles d’accès déjà présentes dans l’application.
+40
+
+
+===== PAGE 49 =====
+Appendix A
+Annexes
+A.1 Routes principales
+Tableau A.1: Extrait des routes applicatives
+Route Fonction
+/login Authentification utilisateur.
+/dashboard Tableau de bord adapté au rôle.
+/employes Liste et recherche des employés.
+/employes/arbre Arbre hiérarchique.
+/conges Suivi et traitement des congés.
+/demandes Demandes administratives.
+/documents Gestion documentaire.
+/notifications Notifications utilisateur.
+/pointage Entrée, sortie et suivi de présence.
+/planning Planning et shifts.
+/taches Tâches d’équipe.
+/formations/mes-formationsFormations affectées à l’employé.
+/messages-rh Messagerie RH classique.
+/actualites Actualités internes.
+/boutique Boutique et commandes matériel.
+/reclamations Réclamations RH.
+/points/ajustement Ajustement manuel des points.
+/audit Historique d’audit.
+A.2 Captures secondaires
+Les captures secondaires doivent être placées dans le dossier figures/interfaces. Les place-
+holders suivants sont prévus dans le corps principal :dashboard_general.png, dashboard_statistiques.png,
+dashboard_graphiques.png, dashboard_gestion.png et dashboard_detail.png.
+41
+
+
+===== PAGE 50 =====
+Plateforme RH Django APPENDIX A. ANNEXES
+A.3 État du module RAG/Grok
+Le module RAG/Grok est présent sous forme minimale dans le code. Il comprend :
+• une route Django /assistant-rh ;
+• une vue chatbot_rh ;
+• un template templates/chatbot/index.html ;
+• un service HRRagService dans hr/chatbot.py ;
+• une récupération documentaire simple depuis les fichiers de documentation du projet ;
+• un appel optionnel à Grok via GROK_API_KEY ;
+• un mode local de secours lorsque la clé API n’est pas disponible.
+Le module assistant RH s’appuie sur une récupération documentaire contrôlée et sur les
+règles d’accès de l’application afin de produire des réponses adaptées au contexte utilisateur.
+A.4 Extraits de commandes utiles
+python manage.py check
+python manage.py test
+python manage.py runserver
+python manage.py seed_demo_rh
+42

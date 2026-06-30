@@ -18,6 +18,15 @@ from django.views.decorators.csrf import csrf_exempt
 from accounts.models import AccountCreationRequest, AdminSetting, Role, UtilisateurProfile
 from accounts.services import AccountRequestService
 from .ai_assistant import assistant_response
+
+from django.db import connection
+
+def health_check(request):
+    try:
+        connection.ensure_connection()
+        return JsonResponse({"status": "ok", "database": "connected"})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=503)
 from hr.models import (
     Actualite,
     AffectationFormation,
