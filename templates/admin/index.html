@@ -56,6 +56,16 @@
             <form method="post" action="{% url 'admin_settings_save' %}" class="row g-3">
                 {% csrf_token %}
                 <div class="col-md-5"><label class="form-label">Domaine email entreprise</label><input name="company_email_domain" class="form-control" value="{{ company_email_domain }}" placeholder="company.com"></div>
+                <div class="col-md-7"><label class="form-label">Domaines autorises</label><input name="company_allowed_email_domains" class="form-control" value="{{ company_allowed_email_domains }}" placeholder="company.com, subsidiary.com"></div>
+                <div class="col-md-4"><label class="form-label">Expiration code compte (minutes)</label><input name="account_verification_code_ttl_minutes" class="form-control" value="{{ settings_map.account_verification_code_ttl_minutes|default:'10' }}" inputmode="numeric"></div>
+                <div class="col-md-4"><label class="form-label">Tentatives code compte</label><input name="account_verification_max_attempts" class="form-control" value="{{ settings_map.account_verification_max_attempts|default:'5' }}" inputmode="numeric"></div>
+                <div class="col-md-4"><label class="form-label">Cooldown renvoi compte (secondes)</label><input name="account_verification_resend_cooldown_seconds" class="form-control" value="{{ settings_map.account_verification_resend_cooldown_seconds|default:'60' }}" inputmode="numeric"></div>
+                <div class="col-md-4"><label class="form-label">Expiration reset (minutes)</label><input name="password_reset_code_ttl_minutes" class="form-control" value="{{ settings_map.password_reset_code_ttl_minutes|default:'10' }}" inputmode="numeric"></div>
+                <div class="col-md-4"><label class="form-label">Tentatives reset</label><input name="password_reset_max_attempts" class="form-control" value="{{ settings_map.password_reset_max_attempts|default:'5' }}" inputmode="numeric"></div>
+                <div class="col-md-4"><label class="form-label">Cooldown renvoi reset (secondes)</label><input name="password_reset_resend_cooldown_seconds" class="form-control" value="{{ settings_map.password_reset_resend_cooldown_seconds|default:'60' }}" inputmode="numeric"></div>
+                <div class="col-md-6"><label class="form-label">Brevo sender email</label><input name="brevo_sender_email" class="form-control" value="{{ settings_map.brevo_sender_email }}" placeholder="hr@company.com"></div>
+                <div class="col-md-6"><label class="form-label">Brevo sender name</label><input name="brevo_sender_name" class="form-control" value="{{ settings_map.brevo_sender_name|default:'HR Platform' }}" placeholder="HR Platform"></div>
+                <div class="col-12"><div class="alert alert-info mb-0">La cle API Brevo reste uniquement dans les variables d'environnement serveur et n'est jamais affichee ici.</div></div>
                 <div class="col-12"><button class="btn btn-accent">Enregistrer</button></div>
             </form>
         </section>

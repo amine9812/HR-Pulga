@@ -21,6 +21,10 @@
             </div>
         </section>
         <section class="login-form-panel">
+            <div class="login-kicker">Etape 3 sur 4</div>
+            <div class="auth-stepper" aria-label="Progression creation de compte">
+                <span>Infos</span><span>Email</span><span class="active">Admin</span><span>Actif</span>
+            </div>
             {% for message in messages %}<div class="alert alert-info">{{ message }}</div>{% endfor %}
             <h2>Validation administrative</h2>
             <p class="text-soft">Revenez sur la page de connexion une fois votre demande approuvee.</p>
@@ -28,5 +32,6 @@
         </section>
     </div>
 </div>
+<script src="{% static 'js/auth.js' %}"></script>
 </body>
 </html>

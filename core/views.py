@@ -16,6 +16,7 @@ from django.utils.safestring import mark_safe
 from django.views.decorators.csrf import csrf_exempt
 
 from accounts.models import AccountCreationRequest, AdminSetting, Role, UtilisateurProfile
+from accounts.services import AccountRequestService
 from .ai_assistant import assistant_response
 from hr.models import (
     Actualite,
@@ -681,11 +682,24 @@ def admin_dashboard(request):
         messages.warning(request, "Section Administration introuvable. Retour a l'Overview.")
         return redirect(f"{reverse('admin_dashboard')}?tab=overview")
     users = User.objects.select_related("profile", "profile__employe").order_by("username")
-    account_requests = AccountCreationRequest.objects.select_related("employee", "user", "decided_by").order_by("-submitted_at")
+    all_account_requests = AccountCreationRequest.objects.select_related("employee", "user", "decided_by", "onboarding_task").order_by("-submitted_at")
+    account_requests = all_account_requests
+    account_status = request.GET.get("status", "")
+    account_search = (request.GET.get("q") or "").strip()
+    if account_status in dict(AccountCreationRequest.STATUSES):
+        account_requests = account_requests.filter(status=account_status)
+    if account_search:
+        account_requests = account_requests.filter(
+            Q(email__icontains=account_search)
+            | Q(first_name__icontains=account_search)
+            | Q(last_name__icontains=account_search)
+            | Q(matricule__icontains=account_search)
+            | Q(phone_number__icontains=account_search)
+        )
     audit_actions = HistoriqueAction.objects.select_related("utilisateur", "utilisateur__user").order_by("-date_action")
     settings_map = {setting.key: setting.value for setting in AdminSetting.objects.all()}
     stats = {
-        "pending_accounts": account_requests.filter(status=AccountCreationRequest.STATUS_PENDING).count(),
+        "pending_accounts": all_account_requests.filter(status=AccountCreationRequest.STATUS_PENDING).count(),
         "active_users": users.filter(profile__actif=True, is_active=True).count(),
         "inactive_users": users.filter(Q(profile__actif=False) | Q(is_active=False)).count(),
         "audit_events": audit_actions.count(),
@@ -705,6 +719,10 @@ def admin_dashboard(request):
             "audit_actions": audit_actions[:200],
             "settings_map": settings_map,
             "company_email_domain": settings_map.get("company_email_domain", ""),
+            "company_allowed_email_domains": settings_map.get("company_allowed_email_domains", ""),
+            "account_status": account_status,
+            "account_search": account_search,
+            "account_statuses": AccountCreationRequest.STATUSES,
         },
     )
 
@@ -717,37 +735,24 @@ def admin_account_request_decision(request, pk):
     account_request = get_object_or_404(AccountCreationRequest.objects.select_related("employee"), pk=pk)
     if request.method != "POST":
         return redirect(f"{reverse('admin_dashboard')}?tab=account_requests")
-    if account_request.status != AccountCreationRequest.STATUS_PENDING:
-        messages.info(request, "Cette demande a deja ete traitee.")
-        return redirect(f"{reverse('admin_dashboard')}?tab=account_requests")
     action = request.POST.get("action")
     note = (request.POST.get("admin_note") or "").strip()
     admin_profile = request.user.profile
+    service = AccountRequestService()
     if action == "approve":
-        if User.objects.filter(Q(username__iexact=account_request.email) | Q(email__iexact=account_request.email), is_active=True).exists():
-            messages.error(request, "Un compte actif existe deja pour cet email.")
-            return redirect(f"{reverse('admin_dashboard')}?tab=account_requests")
-        if account_request.employee and UtilisateurProfile.objects.filter(employe=account_request.employee, actif=True).exists():
-            messages.error(request, "Cet employe est deja lie a un compte actif.")
-            return redirect(f"{reverse('admin_dashboard')}?tab=account_requests")
-        user = User(username=account_request.email, email=account_request.email, first_name=account_request.first_name, last_name=account_request.last_name, is_active=True)
-        user.password = account_request.password_hash
-        user.save()
-        UtilisateurProfile.objects.create(user=user, role=Role.EMPLOYE, employe=account_request.employee, actif=True)
-        account_request.user = user
-        account_request.status = AccountCreationRequest.STATUS_APPROVED
-        messages.success(request, "Demande approuvee et compte active.")
+        try:
+            service.approve(account_request, admin_profile, note)
+            messages.success(request, "Demande approuvee, compte active et onboarding RH cree.")
+        except (ValidationError, PermissionDenied) as exc:
+            messages.error(request, " ".join(exc.messages) if hasattr(exc, "messages") else str(exc))
     elif action == "deny":
-        account_request.status = AccountCreationRequest.STATUS_DENIED
-        messages.success(request, "Demande refusee.")
+        try:
+            service.deny(account_request, admin_profile, note)
+            messages.success(request, "Demande refusee.")
+        except (ValidationError, PermissionDenied) as exc:
+            messages.error(request, " ".join(exc.messages) if hasattr(exc, "messages") else str(exc))
     else:
         messages.error(request, "Decision invalide.")
-        return redirect(f"{reverse('admin_dashboard')}?tab=account_requests")
-    account_request.admin_note = note
-    account_request.decided_at = timezone.now()
-    account_request.decided_by = admin_profile
-    account_request.save(update_fields=["user", "status", "admin_note", "decided_at", "decided_by"])
-    HistoriqueAction.objects.create(action=f"ACCOUNT_REQUEST_{account_request.status.upper()}", details=account_request.email, utilisateur=admin_profile, entite_concernee="AccountCreationRequest", entite_id=account_request.pk)
     return redirect(f"{reverse('admin_dashboard')}?tab=account_requests")
 
 
@@ -783,9 +788,26 @@ def admin_settings_save(request):
         messages.error(request, "Action reservee aux administrateurs.")
         return redirect("dashboard")
     if request.method == "POST":
-        domain = (request.POST.get("company_email_domain") or "").strip().lower().lstrip("@")
-        AdminSetting.objects.update_or_create(key="company_email_domain", defaults={"value": domain})
-        HistoriqueAction.objects.create(action="ADMIN_SETTING_UPDATE", details=f"company_email_domain={domain or 'non defini'}", utilisateur=request.user.profile, entite_concernee="AdminSetting")
+        setting_fields = [
+            "company_email_domain",
+            "company_allowed_email_domains",
+            "account_verification_code_ttl_minutes",
+            "account_verification_max_attempts",
+            "account_verification_resend_cooldown_seconds",
+            "password_reset_code_ttl_minutes",
+            "password_reset_max_attempts",
+            "password_reset_resend_cooldown_seconds",
+            "brevo_sender_email",
+            "brevo_sender_name",
+        ]
+        changed = []
+        for key in setting_fields:
+            value = (request.POST.get(key) or "").strip()
+            if "domain" in key:
+                value = value.lower().lstrip("@")
+            AdminSetting.objects.update_or_create(key=key, defaults={"value": value})
+            changed.append(key)
+        HistoriqueAction.objects.create(action="ADMIN_SETTING_UPDATE", details=", ".join(changed), utilisateur=request.user.profile, entite_concernee="AdminSetting")
         messages.success(request, "Parametres enregistres.")
     return redirect(f"{reverse('admin_dashboard')}?tab=settings")
 

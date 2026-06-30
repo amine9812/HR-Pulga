@@ -10,7 +10,8 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from accounts.models import AccountCreationRequest, AdminSetting, Role, UtilisateurProfile
+from accounts.models import AccountCreationRequest, AdminSetting, Role, UtilisateurProfile, VerificationCode
+from accounts.services import EmailResult
 from hr.forms import AffectationFormationForm, CommandeProduitForm, DemandeAdministrativeForm, DemandeCongeForm, EmployeForm
 from hr.models import (
     AffectationFormation,
@@ -314,6 +315,7 @@ class AdministrationWorkflowTests(TestCase):
             "email": "pending@company.test",
             "first_name": "Pending",
             "last_name": "User",
+            "phone_number": "+212600000000",
             "matricule": "EMP-ADM",
             "password1": "StrongPass123!",
             "password2": "StrongPass123!",
@@ -326,18 +328,28 @@ class AdministrationWorkflowTests(TestCase):
         self.assertEqual(invalid.status_code, 200)
         self.assertFalse(AccountCreationRequest.objects.exists())
 
-        response = self.client.post(reverse("account_request_create"), self.request_payload())
-        self.assertRedirects(response, reverse("account_request_status"))
+        with patch("accounts.services.VerificationCodeService.generate_code", return_value="123456"), patch("accounts.services.BrevoEmailService.send_account_verification", return_value=EmailResult(True)):
+            response = self.client.post(reverse("account_request_create"), self.request_payload())
+        self.assertRedirects(response, reverse("account_request_verify"))
         account_request = AccountCreationRequest.objects.get(email="pending@company.test")
-        self.assertEqual(account_request.status, AccountCreationRequest.STATUS_PENDING)
+        self.assertEqual(account_request.status, AccountCreationRequest.STATUS_VERIFYING)
+        self.assertFalse(account_request.email_verified)
         self.assertNotIn("StrongPass123!", account_request.password_hash)
+        self.assertNotIn("123456", VerificationCode.objects.get(email="pending@company.test").code_hash)
 
         duplicate = self.client.post(reverse("account_request_create"), self.request_payload())
         self.assertEqual(duplicate.status_code, 200)
         self.assertEqual(AccountCreationRequest.objects.filter(email="pending@company.test").count(), 1)
 
+        response = self.client.post(reverse("account_request_verify"), {"code": "123456"})
+        self.assertRedirects(response, reverse("account_request_status"))
+        account_request.refresh_from_db()
+        self.assertEqual(account_request.status, AccountCreationRequest.STATUS_PENDING)
+        self.assertTrue(account_request.email_verified)
+
         self.client.login(username="admin-workflow", password="admin123")
-        response = self.client.post(reverse("admin_account_request_decision", args=[account_request.pk]), {"action": "approve", "admin_note": "OK"})
+        with patch("accounts.services.BrevoEmailService.send_account_decision", return_value=EmailResult(True)):
+            response = self.client.post(reverse("admin_account_request_decision", args=[account_request.pk]), {"action": "approve", "admin_note": "OK"})
         self.assertRedirects(response, f"{reverse('admin_dashboard')}?tab=account_requests")
         account_request.refresh_from_db()
         self.assertEqual(account_request.status, AccountCreationRequest.STATUS_APPROVED)
@@ -351,7 +363,8 @@ class AdministrationWorkflowTests(TestCase):
         denied.set_password("StrongPass123!")
         denied.save()
         self.client.login(username="admin-workflow", password="admin123")
-        self.client.post(reverse("admin_account_request_decision", args=[denied.pk]), {"action": "deny", "admin_note": "No match"})
+        with patch("accounts.services.BrevoEmailService.send_account_decision", return_value=EmailResult(True)):
+            self.client.post(reverse("admin_account_request_decision", args=[denied.pk]), {"action": "deny", "admin_note": "No match"})
         denied.refresh_from_db()
         self.assertEqual(denied.status, AccountCreationRequest.STATUS_DENIED)
         self.assertFalse(User.objects.filter(username="denied@company.test").exists())

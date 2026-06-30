@@ -1,24 +1,84 @@
-<div class="table-responsive"><table class="table table-compact align-middle"><thead><tr><th>Email</th><th>Employe lie</th><th>Statut</th><th>Date</th>{% if not compact %}<th>Decision</th>{% endif %}</tr></thead><tbody>
-{% for request_item in account_requests %}
-    <tr>
-        <td><strong>{{ request_item.email }}</strong><br><small>{{ request_item.first_name }} {{ request_item.last_name }}{% if request_item.matricule %} · {{ request_item.matricule }}{% endif %}</small></td>
-        <td>{{ request_item.employee.nom_complet|default:"Aucun profil trouve" }}</td>
-        <td><span class="status-badge status-{{ request_item.status }}">{{ request_item.get_status_display }}</span></td>
-        <td>{{ request_item.submitted_at|date:"d/m/Y H:i" }}</td>
-        {% if not compact %}
-            <td>
-                {% if request_item.status == "pending" %}
-                    <form method="post" action="{% url 'admin_account_request_decision' request_item.id %}" class="d-flex flex-wrap gap-1" onsubmit="return confirm('Confirmer cette decision ?')">
-                        {% csrf_token %}
-                        <input name="admin_note" class="form-control form-control-sm" placeholder="Note admin">
-                        <button name="action" value="approve" class="btn btn-sm btn-success">Approuver</button>
-                        <button name="action" value="deny" class="btn btn-sm btn-outline-danger">Refuser</button>
-                    </form>
-                {% else %}
-                    <small>{{ request_item.decided_at|date:"d/m/Y H:i"|default:"-" }} · {{ request_item.decided_by|default:"-" }}</small>
+{% if not compact %}
+<form method="get" class="admin-filter-row mb-3">
+    <input type="hidden" name="tab" value="account_requests">
+    <div class="input-group input-group-sm">
+        <span class="input-group-text"><i class="bi bi-search"></i></span>
+        <input name="q" class="form-control" value="{{ account_search }}" placeholder="Rechercher email, nom, telephone, matricule">
+        <select name="status" class="form-select">
+            <option value="">Tous les statuts</option>
+            {% for value,label in account_statuses %}
+                <option value="{{ value }}" {% if account_status == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        <button class="btn btn-accent" type="submit">Filtrer</button>
+    </div>
+</form>
+{% endif %}
+<div class="table-responsive">
+    <table class="table table-compact align-middle">
+        <thead>
+            <tr>
+                <th>Demandeur</th>
+                <th>Employe lie</th>
+                <th>Verification</th>
+                <th>Statut</th>
+                <th>Date</th>
+                {% if not compact %}<th>Decision</th>{% endif %}
+            </tr>
+        </thead>
+        <tbody>
+        {% for request_item in account_requests %}
+            <tr>
+                <td>
+                    <strong>{{ request_item.email }}</strong><br>
+                    <small>
+                        {{ request_item.first_name }} {{ request_item.last_name }}
+                        {% if request_item.phone_number %} · {{ request_item.phone_number }}{% endif %}
+                        {% if request_item.matricule %} · {{ request_item.matricule }}{% endif %}
+                    </small>
+                </td>
+                <td>
+                    {{ request_item.employee.nom_complet|default:"Aucun profil trouve" }}
+                    {% if request_item.employee and request_item.matricule and request_item.employee.matricule != request_item.matricule %}
+                        <br><span class="status-badge status-denied">Matricule different</span>
+                    {% endif %}
+                    {% if request_item.employee and request_item.employee.email|lower != request_item.email|lower %}
+                        <br><span class="status-badge status-denied">Email profil different</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if request_item.email_verified %}
+                        <span class="status-badge status-approved">Email verifie</span>
+                        <br><small>{{ request_item.verified_at|date:"d/m/Y H:i" }}</small>
+                    {% else %}
+                        <span class="status-badge status-verifying">En verification</span>
+                    {% endif %}
+                    {% if request_item.onboarding_task %}
+                        <br><small>Onboarding: #{{ request_item.onboarding_task_id }}</small>
+                    {% endif %}
+                </td>
+                <td><span class="status-badge status-{{ request_item.status }}">{{ request_item.get_status_display }}</span></td>
+                <td>{{ request_item.submitted_at|date:"d/m/Y H:i" }}</td>
+                {% if not compact %}
+                    <td>
+                        {% if request_item.status == "pending" and request_item.email_verified %}
+                            <form method="post" action="{% url 'admin_account_request_decision' request_item.id %}" class="d-flex flex-wrap gap-1" onsubmit="return confirm('Confirmer cette decision ?')">
+                                {% csrf_token %}
+                                <input name="admin_note" class="form-control form-control-sm" placeholder="Note admin">
+                                <button name="action" value="approve" class="btn btn-sm btn-success">Approuver</button>
+                                <button name="action" value="deny" class="btn btn-sm btn-outline-danger">Refuser</button>
+                            </form>
+                        {% elif request_item.status == "verifying" %}
+                            <small>En attente du code email.</small>
+                        {% else %}
+                            <small>{{ request_item.decided_at|date:"d/m/Y H:i"|default:"-" }} · {{ request_item.decided_by|default:"-" }}</small>
+                        {% endif %}
+                    </td>
                 {% endif %}
-            </td>
-        {% endif %}
-    </tr>
-{% empty %}<tr><td colspan="{% if compact %}4{% else %}5{% endif %}" class="empty-state">Aucune demande de compte.</td></tr>{% endfor %}
-</tbody></table></div>
+            </tr>
+        {% empty %}
+            <tr><td colspan="{% if compact %}5{% else %}6{% endif %}" class="empty-state">Aucune demande de compte.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>

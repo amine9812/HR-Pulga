@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import AccountCreationRequest, AdminSetting, UtilisateurProfile
+from .models import AccountCreationRequest, AdminSetting, UtilisateurProfile, VerificationCode
 
 
 @admin.register(UtilisateurProfile)
@@ -12,3 +12,11 @@ class UtilisateurProfileAdmin(admin.ModelAdmin):
 
 admin.site.register(AdminSetting)
 admin.site.register(AccountCreationRequest)
+
+
+@admin.register(VerificationCode)
+class VerificationCodeAdmin(admin.ModelAdmin):
+    list_display = ("email", "purpose", "expires_at", "attempts", "max_attempts", "consumed_at", "locked_at")
+    list_filter = ("purpose", "consumed_at", "locked_at")
+    search_fields = ("email",)
+    readonly_fields = ("code_hash", "created_at", "updated_at")
