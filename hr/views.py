@@ -881,8 +881,11 @@ def document_upload(request):
     employe = user_profile.employe
     if user_profile.role in {Role.ADMIN, Role.RESPONSABLE_RH} and request.POST.get("employeId"):
         employe = Employe.objects.filter(pk=request.POST.get("employeId")).first()
-    create_document(request, uploaded, request.POST.get("categorie"), employe, None)
-    messages.success(request, "Document televerse avec succes.")
+    try:
+        create_document(request, uploaded, request.POST.get("categorie"), employe, None)
+        messages.success(request, "Document televerse avec succes.")
+    except (OSError, ValueError):
+        messages.error(request, "Impossible d'enregistrer ce document. Verifiez le fichier puis reessayez.")
     return redirect("documents_list")
 
 
@@ -894,7 +897,11 @@ def document_download(request, pk):
     include_archived = user_profile and user_profile.role in {Role.ADMIN, Role.RESPONSABLE_RH}
     if not accessible_documents(user_profile, include_archived=include_archived).filter(pk=pk).exists():
         return HttpResponseForbidden()
-    return FileResponse(document.fichier.open("rb"), as_attachment=True, filename=document.nom_original)
+    try:
+        return FileResponse(document.fichier.open("rb"), as_attachment=True, filename=document.nom_original)
+    except (OSError, ValueError):
+        messages.error(request, "Le fichier demande est introuvable ou indisponible.")
+        return redirect("documents_list")
 
 
 @login_required
@@ -1998,11 +2005,14 @@ def formations_admin(request):
 def formation_create(request):
     form = FormationForm(request.POST)
     if form.is_valid():
-        formation = form.save(commit=False)
-        formation.full_clean()
-        formation.save()
-        audit(request, "CREATION_FORMATION", f"Formation creee: {formation.titre}", "Formation", formation.pk)
-        messages.success(request, "Formation creee.")
+        try:
+            formation = form.save(commit=False)
+            formation.full_clean()
+            formation.save()
+            audit(request, "CREATION_FORMATION", f"Formation creee: {formation.titre}", "Formation", formation.pk)
+            messages.success(request, "Formation creee.")
+        except ValidationError as exc:
+            messages.error(request, " ".join(exc.messages))
     else:
         messages.error(request, "Formation invalide.")
     return redirect("formations_admin")
@@ -2656,11 +2666,14 @@ def shop(request):
 def product_create(request):
     form = ProduitForm(request.POST, request.FILES)
     if form.is_valid():
-        produit = form.save(commit=False)
-        produit.full_clean()
-        produit.save()
-        audit(request, "CREATION_PRODUIT", f"Produit enregistre: {produit.nom}", "Produit", produit.pk)
-        messages.success(request, "Produit enregistre.")
+        try:
+            produit = form.save(commit=False)
+            produit.full_clean()
+            produit.save()
+            audit(request, "CREATION_PRODUIT", f"Produit enregistre: {produit.nom}", "Produit", produit.pk)
+            messages.success(request, "Produit enregistre.")
+        except ValidationError as exc:
+            messages.error(request, " ".join(exc.messages))
     else:
         messages.error(request, "Produit invalide.")
     return redirect("shop")
@@ -2672,11 +2685,14 @@ def product_update(request, pk):
     produit = get_object_or_404(Produit, pk=pk)
     form = ProduitForm(request.POST, request.FILES, instance=produit)
     if form.is_valid():
-        produit = form.save(commit=False)
-        produit.full_clean()
-        produit.save()
-        audit(request, "MODIFICATION_PRODUIT", f"Produit modifie: {produit.nom}", "Produit", produit.pk)
-        messages.success(request, "Produit mis a jour.")
+        try:
+            produit = form.save(commit=False)
+            produit.full_clean()
+            produit.save()
+            audit(request, "MODIFICATION_PRODUIT", f"Produit modifie: {produit.nom}", "Produit", produit.pk)
+            messages.success(request, "Produit mis a jour.")
+        except ValidationError as exc:
+            messages.error(request, " ".join(exc.messages))
     else:
         messages.error(request, "Produit invalide: verifiez la categorie, la description, le stock et les points.")
     return redirect("shop")
@@ -2708,6 +2724,8 @@ def order_process(request, pk):
         messages.success(request, "Commande traitee.")
     except ValidationError as exc:
         messages.error(request, " ".join(exc.messages))
+    except Exception:
+        messages.error(request, "Une erreur inattendue est survenue pendant le traitement de la commande.")
     return redirect("shop")
 
 

@@ -540,6 +540,17 @@ class NewHrFeatureAbuseTests(TestCase):
         self.assertNotContains(response, "123456")
         self.assertNotContains(response, "789")
 
+    def test_hierarchy_page_tolerates_existing_manager_cycle(self):
+        Employe.objects.filter(pk=self.rh_emp.pk).update(responsable=self.emp)
+        self.client.login(username="emp2", password="emp123")
+
+        response = self.client.get(reverse("hierarchy_tree"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.rh_emp.nom_complet)
+        self.assertContains(response, self.emp.nom_complet)
+        self.assertContains(response, "org-card")
+
     def test_unauthenticated_user_cannot_view_hierarchy(self):
         response = self.client.get(reverse("hierarchy_tree"))
         self.assertEqual(response.status_code, 302)
@@ -928,6 +939,23 @@ class NewHrFeatureAbuseTests(TestCase):
         self.client.login(username="ticket-other", password="other123")
         response = self.client.get(reverse("rh_message_attachment", args=[msg.pk]))
         self.assertEqual(response.status_code, 404)
+
+    def test_missing_document_file_redirects_instead_of_500(self):
+        document = Document.objects.create(
+            fichier="uploads/documents/missing-file.pdf",
+            nom_fichier="missing-file.pdf",
+            nom_original="missing-file.pdf",
+            categorie="Contrat",
+            taille=12,
+            employe=self.emp,
+            uploade_par=self.emp_user,
+        )
+        self.client.login(username="emp2", password="emp123")
+
+        response = self.client.get(reverse("document_download", args=[document.pk]))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("documents_list"))
 
     def test_documents_and_reclamations_tabs_fallback_to_support(self):
         self.client.login(username="emp2", password="emp123")

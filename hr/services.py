@@ -440,10 +440,13 @@ def build_hierarchy_tree(departement_id=None, search="", show_all=False, manager
             is_structural = is_structural and (child_count > 0 or rank_of(employee) <= max_rank)
         if matches_department and matches_search and is_structural:
             visible_ids.add(employee.pk)
-            manager = employee.responsable
-            while manager:
-                visible_ids.add(manager.pk)
-                manager = manager.responsable
+            manager_id = employee.responsable_id
+            visited_managers = set()
+            while manager_id and manager_id not in visited_managers:
+                visible_ids.add(manager_id)
+                visited_managers.add(manager_id)
+                manager = by_id.get(manager_id)
+                manager_id = manager.responsable_id if manager else None
 
     if not visible_ids and search:
         for employee in employees:
@@ -467,11 +470,25 @@ def build_hierarchy_tree(departement_id=None, search="", show_all=False, manager
         return {"employee": employee, "children": child_nodes, "level_class": level_class, "level_label": level_label}
 
     roots = []
+    rendered_ids = set()
+
+    def collect_node_ids(node):
+        rendered_ids.add(node["employee"].pk)
+        for child in node["children"]:
+            collect_node_ids(child)
+
     for employee in sorted([employee for employee in employees if employee.pk in visible_ids], key=sort_key):
         if not employee.responsable_id or employee.responsable_id not in visible_ids:
             node = make_node(employee)
             if node:
                 roots.append(node)
+                collect_node_ids(node)
+
+    for employee in sorted([employee for employee in employees if employee.pk in visible_ids and employee.pk not in rendered_ids], key=sort_key):
+        node = make_node(employee)
+        if node:
+            roots.append(node)
+            collect_node_ids(node)
 
     non_affectes = [make_node(employee) for employee in sorted(employees, key=sort_key) if employee.pk in visible_ids and employee.responsable_id and employee.responsable_id not in by_id]
     return {
