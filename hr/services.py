@@ -301,7 +301,7 @@ def rembourser_solde_conge(demande, cree_par=None):
 @transaction.atomic
 def approuver_commande(commande, valide_par):
     # TRAITEMENT BOUTIQUE — valide stock, deduit les points et diminue le stock une seule fois.
-    commande = CommandeProduit.objects.select_for_update().select_related("produit", "employe").get(pk=commande.pk)
+    commande = CommandeProduit.objects.select_for_update().get(pk=commande.pk)
     if commande.statut != "en_attente":
         raise ValidationError("Cette commande n'est plus en attente.")
     produit = commande.produit
@@ -326,7 +326,7 @@ def approuver_commande(commande, valide_par):
 @transaction.atomic
 def refuser_ou_annuler_commande(commande, statut, valide_par=None, motif=""):
     # TRAITEMENT BOUTIQUE — rembourse les points et le stock si une commande deja deduite est annulee/refusee.
-    commande = CommandeProduit.objects.select_for_update().select_related("produit", "employe").get(pk=commande.pk)
+    commande = CommandeProduit.objects.select_for_update().get(pk=commande.pk)
     if statut not in {"refusee", "annulee"}:
         raise ValidationError("Statut de commande invalide.")
     if commande.statut in {"refusee", "annulee", "livree"}:
@@ -349,7 +349,7 @@ def refuser_ou_annuler_commande(commande, statut, valide_par=None, motif=""):
 
 @transaction.atomic
 def livrer_commande(commande, valide_par):
-    commande = CommandeProduit.objects.select_for_update().select_related("produit", "employe").get(pk=commande.pk)
+    commande = CommandeProduit.objects.select_for_update().get(pk=commande.pk)
     # TRAITEMENT BOUTIQUE — seule une commande approuvee peut etre livree et affectee en materiel.
     if commande.statut != "approuvee":
         raise ValidationError("Seule une commande approuvee peut etre livree.")

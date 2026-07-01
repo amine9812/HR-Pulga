@@ -1870,7 +1870,7 @@ def task_status(request, pk):
     try:
         with transaction.atomic():
             action = request.POST.get("action") or request.POST.get("statut")
-            task = get_object_or_404(TacheEquipe.objects.select_for_update().select_related("employe", "accepte_par", "manager", "departement", "service", "cree_par"), pk=pk)
+            task = get_object_or_404(TacheEquipe.objects.select_for_update(), pk=pk)
             visible = tasks_for_profile(user_profile).filter(pk=task.pk).exists()
             stale_open_accept = (
                 action == "accept"

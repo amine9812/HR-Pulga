@@ -389,7 +389,7 @@ class AccountRequestService:
         if not admin_profile or admin_profile.role != Role.ADMIN:
             raise PermissionDenied("Only administrators can approve account creation requests.")
         with transaction.atomic():
-            locked = AccountCreationRequest.objects.select_for_update().select_related("employee").get(pk=request_obj.pk)
+            locked = AccountCreationRequest.objects.select_for_update().get(pk=request_obj.pk)
             if not locked.is_decision_ready:
                 raise ValidationError("This account request is not ready for approval.")
             if User.objects.filter(Q(username__iexact=locked.email) | Q(email__iexact=locked.email)).exists():
