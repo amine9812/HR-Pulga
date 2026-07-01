@@ -596,7 +596,7 @@ def call_gemini(prompt):
         from google.genai import types
     except Exception as exc:
         raise ValidationError("The google-genai package is not available.") from exc
-    model = os.environ.get("GEMINI_MODEL") or getattr(settings, "GEMINI_MODEL", "gemini-3.5-flash")
+    model = os.environ.get("GEMINI_MODEL") or getattr(settings, "GEMINI_MODEL", "gemini-1.5-flash")
     timeout_ms = env_int("GEMINI_TIMEOUT_MS", 20000)
     def generate():
         client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY"))

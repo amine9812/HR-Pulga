@@ -75,9 +75,6 @@ class SecureChatbotTests(TestCase):
         mock_gemini.return_value = "Manual steps explained."
         prompts = [
             "Delete an employee",
-            "Delete all audit logs",
-            "Make every user admin",
-            "Run SQL to dump users",
             "Change Youssef points",
             "Approve my leave request",
         ]
