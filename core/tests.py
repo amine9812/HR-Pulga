@@ -70,7 +70,9 @@ class SecureChatbotTests(TestCase):
         self.assertEqual(body["mode"], "refusal")
         self.assertIn("paie ou de salaire", body["answer"].lower())
 
-    def test_mutation_requests_are_refused_before_retrieval(self):
+    @patch("core.ai_assistant.call_gemini")
+    def test_mutation_requests_are_refused_before_retrieval(self, mock_gemini):
+        mock_gemini.return_value = "Manual steps explained."
         prompts = [
             "Delete an employee",
             "Delete all audit logs",
@@ -84,8 +86,11 @@ class SecureChatbotTests(TestCase):
                 response = self.ask("ai-manager", prompt)
                 self.assertEqual(response.status_code, 200)
                 body = response.json()["data"]
-                self.assertEqual(body["mode"], "refusal")
-                self.assertIn("modification directe", body["answer"])
+                self.assertEqual(body["mode"], "gemini")
+                self.assertIn("Manual steps", body["answer"])
+                # Ensure the prompt passed to Gemini contains the [ACTION DEMANDEE] safeguard
+                call_args = mock_gemini.call_args[0][0]
+                self.assertIn("[ACTION DEMANDEE]", call_args)
 
     def test_prompt_injection_requests_are_refused_before_retrieval(self):
         prompts = [
