@@ -11,7 +11,7 @@ from django.db.models import Q
 from django.db.models import Avg, Count, Max, Min, Sum
 from django.db.models.functions import Concat
 from django.db.models import Value
-from django.http import FileResponse, HttpResponse, HttpResponseForbidden, JsonResponse
+from django.http import FileResponse, Http404, HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -2078,6 +2078,13 @@ def conversations_for_profile(user_profile):
     return qs.filter(Q(employe=user_profile.employe) | Q(participants=user_profile.employe)).distinct()
 
 
+def locked_conversation_for_profile(user_profile, pk):
+    conv = get_object_or_404(ConversationRH.objects.select_for_update(), pk=pk)
+    if not conversations_for_profile(user_profile).filter(pk=conv.pk).exists():
+        raise Http404("Conversation RH introuvable.")
+    return conv
+
+
 def can_handle_ticket(user_profile, conv):
     if not user_profile or user_profile.role not in {Role.ADMIN, Role.RESPONSABLE_RH}:
         return False
@@ -2254,7 +2261,7 @@ def rh_conversation_detail(request, pk):
         if form.is_valid():
             try:
                 with transaction.atomic():
-                    conv = get_object_or_404(conversations_for_profile(user_profile).select_related(None).select_for_update(), pk=pk)
+                    conv = locked_conversation_for_profile(user_profile, pk)
                     if conv.statut == "cloturee":
                         raise ValidationError("Ce ticket est cloture: aucune nouvelle reponse ne peut etre ajoutee.")
                     if user_profile.role == Role.RESPONSABLE_RH and conv.responsable_rh_id and conv.responsable_rh_id != user_profile.id:
@@ -2300,7 +2307,7 @@ def rh_conversation_close(request, pk):
     form = ConversationRHCloseForm(request.POST)
     try:
         with transaction.atomic():
-            conv = get_object_or_404(conversations_for_profile(user_profile).select_related(None).select_for_update(), pk=pk)
+            conv = locked_conversation_for_profile(user_profile, pk)
             if conv.statut == "cloturee":
                 messages.info(request, "Ce ticket est deja cloture.")
                 return redirect("rh_conversation_detail", pk=pk)
@@ -2349,7 +2356,7 @@ def rh_conversation_accept(request, pk):
     user_profile = profile(request)
     try:
         with transaction.atomic():
-            conv = get_object_or_404(conversations_for_profile(user_profile).select_related(None).select_for_update(), pk=pk)
+            conv = locked_conversation_for_profile(user_profile, pk)
             if conv.statut == "cloturee":
                 raise ValidationError("Ce ticket est deja cloture.")
             if conv.responsable_rh_id and conv.responsable_rh_id != user_profile.id:

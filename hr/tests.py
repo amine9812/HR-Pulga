@@ -966,6 +966,31 @@ class NewHrFeatureAbuseTests(TestCase):
         self.assertEqual(response.status_code, 404)
         self.assertFalse(MessageRH.objects.filter(conversation=conv, contenu="Je reponds aussi.").exists())
 
+    def test_support_post_actions_lock_plain_ticket_queryset(self):
+        from django.db.models.query import QuerySet
+
+        conv = ConversationRH.objects.create(employe=self.emp, sujet="Erreur 500 prod", statut="en_attente")
+        self.client.login(username="rh2", password="rh123")
+        original_select_for_update = QuerySet.select_for_update
+
+        def reject_distinct_row_lock(queryset, *args, **kwargs):
+            if queryset.model is ConversationRH and queryset.query.distinct:
+                raise AssertionError("Support actions must not lock a DISTINCT ticket queryset.")
+            return original_select_for_update(queryset, *args, **kwargs)
+
+        with patch.object(QuerySet, "select_for_update", reject_distinct_row_lock):
+            response = self.client.post(reverse("rh_conversation_accept", args=[conv.pk]))
+            self.assertEqual(response.status_code, 302)
+            response = self.client.post(reverse("rh_conversation_detail", args=[conv.pk]), {"contenu": "Pris en charge."})
+            self.assertEqual(response.status_code, 302)
+            response = self.client.post(reverse("rh_conversation_close", args=[conv.pk]), {"motif_cloture": "resolved", "detail_cloture": "Traite."})
+            self.assertEqual(response.status_code, 302)
+
+        conv.refresh_from_db()
+        self.assertEqual(conv.statut, "cloturee")
+        self.assertEqual(conv.responsable_rh, self.rh_user.profile)
+        self.assertTrue(MessageRH.objects.filter(conversation=conv, contenu="Pris en charge.").exists())
+
     def test_ticket_rating_updates_ranking_and_reward_approval_awards_points(self):
         conv = ConversationRH.objects.create(
             employe=self.emp,
