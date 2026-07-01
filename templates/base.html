@@ -66,21 +66,21 @@
                     <i class="bi bi-calendar-week"></i><span>Planning</span><i class="bi bi-chevron-down ms-auto"></i>
                 </button>
                 <div class="collapse sidebar-submenu {% if nav_module == 'planning' %}show{% endif %}" id="menuPlanning">
-                    <a href="{% url 'planning' %}?tab=overview" class="sidebar-subitem {% if nav_item == 'planning_overview' %}active{% endif %}"><i class="bi bi-speedometer2"></i><span>Overview</span></a>
-                    <a href="{% url 'planning' %}?tab=calendar" class="sidebar-subitem {% if nav_item == 'planning_calendar' %}active{% endif %}"><i class="bi bi-calendar3"></i><span>Calendar</span></a>
-                    <a href="{% url 'planning' %}?tab=daily" class="sidebar-subitem {% if nav_item == 'planning_daily' %}active{% endif %}"><i class="bi bi-calendar-day"></i><span>Daily</span></a>
-                    <a href="{% url 'planning' %}?tab=weekly" class="sidebar-subitem {% if nav_item == 'planning_weekly' %}active{% endif %}"><i class="bi bi-calendar-week"></i><span>Weekly</span></a>
-                    <a href="{% url 'planning' %}?tab=biweekly" class="sidebar-subitem {% if nav_item == 'planning_biweekly' %}active{% endif %}"><i class="bi bi-calendar2-range"></i><span>Bi-weekly</span></a>
-                    <a href="{% url 'planning' %}?tab=monthly" class="sidebar-subitem {% if nav_item == 'planning_monthly' %}active{% endif %}"><i class="bi bi-calendar-month"></i><span>Monthly</span></a>
-                    <a href="{% url 'planning' %}?tab=timesheets" class="sidebar-subitem {% if nav_item == 'planning_timesheets' %}active{% endif %}"><i class="bi bi-clock"></i><span>Timesheets</span></a>
-                    <a href="{% url 'planning' %}?tab=shifts" class="sidebar-subitem {% if nav_item == 'planning_shifts' %}active{% endif %}"><i class="bi bi-calendar-plus"></i><span>Shift Management</span></a>
-                    <a href="{% url 'planning' %}?tab=attendance" class="sidebar-subitem {% if nav_item == 'planning_attendance' %}active{% endif %}"><i class="bi bi-person-check"></i><span>Attendance</span></a>
-                    <a href="{% url 'planning' %}?tab=leave" class="sidebar-subitem {% if nav_item == 'planning_leave' %}active{% endif %}"><i class="bi bi-calendar2-check"></i><span>Time Off</span></a>
-                    <a href="{% url 'planning' %}?tab=tasks" class="sidebar-subitem {% if nav_item == 'planning_tasks' %}active{% endif %}"><i class="bi bi-list-check"></i><span>Tasks</span></a>
-                    <a href="{% url 'planning' %}?tab=approvals" class="sidebar-subitem {% if nav_item == 'planning_approvals' %}active{% endif %}"><i class="bi bi-shield-check"></i><span>Approvals</span></a>
-                    <a href="{% url 'planning' %}?tab=reports" class="sidebar-subitem {% if nav_item == 'planning_reports' %}active{% endif %}"><i class="bi bi-file-earmark-bar-graph"></i><span>Reports</span></a>
+                    <a href="{% url 'planning' %}?tab=overview" class="sidebar-subitem {% if nav_item == 'planning_overview' %}active{% endif %}"><i class="bi bi-speedometer2"></i><span>Apercu</span></a>
+                    <a href="{% url 'planning' %}?tab=calendar" class="sidebar-subitem {% if nav_item == 'planning_calendar' %}active{% endif %}"><i class="bi bi-calendar3"></i><span>Calendrier</span></a>
+                    <a href="{% url 'planning' %}?tab=daily" class="sidebar-subitem {% if nav_item == 'planning_daily' %}active{% endif %}"><i class="bi bi-calendar-day"></i><span>Journalier</span></a>
+                    <a href="{% url 'planning' %}?tab=weekly" class="sidebar-subitem {% if nav_item == 'planning_weekly' %}active{% endif %}"><i class="bi bi-calendar-week"></i><span>Hebdomadaire</span></a>
+                    <a href="{% url 'planning' %}?tab=biweekly" class="sidebar-subitem {% if nav_item == 'planning_biweekly' %}active{% endif %}"><i class="bi bi-calendar2-range"></i><span>Bihebdomadaire</span></a>
+                    <a href="{% url 'planning' %}?tab=monthly" class="sidebar-subitem {% if nav_item == 'planning_monthly' %}active{% endif %}"><i class="bi bi-calendar-month"></i><span>Mensuel</span></a>
+                    <a href="{% url 'planning' %}?tab=timesheets" class="sidebar-subitem {% if nav_item == 'planning_timesheets' %}active{% endif %}"><i class="bi bi-clock"></i><span>Feuilles de temps</span></a>
+                    <a href="{% url 'planning' %}?tab=shifts" class="sidebar-subitem {% if nav_item == 'planning_shifts' %}active{% endif %}"><i class="bi bi-calendar-plus"></i><span>Gestion des shifts</span></a>
+                    <a href="{% url 'planning' %}?tab=attendance" class="sidebar-subitem {% if nav_item == 'planning_attendance' %}active{% endif %}"><i class="bi bi-person-check"></i><span>Presence</span></a>
+                    <a href="{% url 'planning' %}?tab=leave" class="sidebar-subitem {% if nav_item == 'planning_leave' %}active{% endif %}"><i class="bi bi-calendar2-check"></i><span>Conges</span></a>
+                    <a href="{% url 'planning' %}?tab=tasks" class="sidebar-subitem {% if nav_item == 'planning_tasks' %}active{% endif %}"><i class="bi bi-list-check"></i><span>Taches</span></a>
+                    <a href="{% url 'planning' %}?tab=approvals" class="sidebar-subitem {% if nav_item == 'planning_approvals' %}active{% endif %}"><i class="bi bi-shield-check"></i><span>Validations</span></a>
+                    <a href="{% url 'planning' %}?tab=reports" class="sidebar-subitem {% if nav_item == 'planning_reports' %}active{% endif %}"><i class="bi bi-file-earmark-bar-graph"></i><span>Rapports</span></a>
                     {% if utilisateur_connecte.role == "ADMIN" or utilisateur_connecte.role == "RESPONSABLE_RH" %}
-                        <a href="{% url 'planning' %}?tab=settings" class="sidebar-subitem {% if nav_item == 'planning_settings' %}active{% endif %}"><i class="bi bi-gear"></i><span>Settings</span></a>
+                        <a href="{% url 'planning' %}?tab=settings" class="sidebar-subitem {% if nav_item == 'planning_settings' %}active{% endif %}"><i class="bi bi-gear"></i><span>Parametres</span></a>
                     {% endif %}
                 </div>
             </div>
@@ -89,15 +89,15 @@
                     <i class="bi bi-list-check"></i><span>Taches equipe</span><i class="bi bi-chevron-down ms-auto"></i>
                 </button>
                 <div class="collapse sidebar-submenu {% if nav_module == 'team_tasks' %}show{% endif %}" id="menuTeamTasks">
-                    <a href="{% url 'team_tasks' %}?tab=overview" class="sidebar-subitem {% if nav_item == 'team_tasks_overview' %}active{% endif %}"><i class="bi bi-speedometer2"></i><span>Overview</span></a>
+                    <a href="{% url 'team_tasks' %}?tab=overview" class="sidebar-subitem {% if nav_item == 'team_tasks_overview' %}active{% endif %}"><i class="bi bi-speedometer2"></i><span>Apercu</span></a>
                     {% if utilisateur_connecte.role == "ADMIN" or utilisateur_connecte.role == "RESPONSABLE_RH" or utilisateur_connecte.role == "RESPONSABLE_HIERARCHIQUE" %}
-                        <a href="{% url 'team_tasks' %}?tab=create" class="sidebar-subitem {% if nav_item == 'team_tasks_create' %}active{% endif %}"><i class="bi bi-plus-square"></i><span>Create Task</span></a>
+                        <a href="{% url 'team_tasks' %}?tab=create" class="sidebar-subitem {% if nav_item == 'team_tasks_create' %}active{% endif %}"><i class="bi bi-plus-square"></i><span>Creer une tache</span></a>
                     {% endif %}
-                    <a href="{% url 'team_tasks' %}?tab=open" class="sidebar-subitem {% if nav_item == 'team_tasks_open' %}active{% endif %}"><i class="bi bi-inbox"></i><span>Open Tasks</span></a>
-                    <a href="{% url 'team_tasks' %}?tab=mine" class="sidebar-subitem {% if nav_item == 'team_tasks_mine' %}active{% endif %}"><i class="bi bi-person-check"></i><span>My Tasks</span></a>
+                    <a href="{% url 'team_tasks' %}?tab=open" class="sidebar-subitem {% if nav_item == 'team_tasks_open' %}active{% endif %}"><i class="bi bi-inbox"></i><span>Taches ouvertes</span></a>
+                    <a href="{% url 'team_tasks' %}?tab=mine" class="sidebar-subitem {% if nav_item == 'team_tasks_mine' %}active{% endif %}"><i class="bi bi-person-check"></i><span>Mes taches</span></a>
                     {% if utilisateur_connecte.role == "ADMIN" or utilisateur_connecte.role == "RESPONSABLE_RH" or utilisateur_connecte.role == "RESPONSABLE_HIERARCHIQUE" %}
-                        <a href="{% url 'team_tasks' %}?tab=team" class="sidebar-subitem {% if nav_item == 'team_tasks_team' %}active{% endif %}"><i class="bi bi-people"></i><span>Team Follow-up</span></a>
-                        <a href="{% url 'team_tasks' %}?tab=approval" class="sidebar-subitem {% if nav_item == 'team_tasks_approval' %}active{% endif %}"><i class="bi bi-check2-circle"></i><span>Pending Approval</span></a>
+                        <a href="{% url 'team_tasks' %}?tab=team" class="sidebar-subitem {% if nav_item == 'team_tasks_team' %}active{% endif %}"><i class="bi bi-people"></i><span>Suivi equipe</span></a>
+                        <a href="{% url 'team_tasks' %}?tab=approval" class="sidebar-subitem {% if nav_item == 'team_tasks_approval' %}active{% endif %}"><i class="bi bi-check2-circle"></i><span>En attente</span></a>
                         <a href="{% url 'team_tasks' %}?tab=points" class="sidebar-subitem {% if nav_item == 'team_tasks_points' %}active{% endif %}"><i class="bi bi-award"></i><span>Points & Rewards</span></a>
                     {% endif %}
                     <a href="{% url 'team_tasks' %}?tab=archive" class="sidebar-subitem {% if nav_item == 'team_tasks_archive' %}active{% endif %}"><i class="bi bi-archive"></i><span>Archive</span></a>
@@ -132,20 +132,19 @@
                         <i class="bi bi-shield-lock"></i><span>Administration</span><i class="bi bi-chevron-down ms-auto"></i>
                     </button>
                     <div class="collapse sidebar-submenu {% if nav_module == 'administration' %}show{% endif %}" id="menuAdministration">
-                        <a href="{% url 'admin_dashboard' %}?tab=overview" class="sidebar-subitem {% if nav_item == 'administration_overview' %}active{% endif %}"><i class="bi bi-speedometer2"></i><span>Overview</span></a>
+                        <a href="{% url 'admin_dashboard' %}?tab=overview" class="sidebar-subitem {% if nav_item == 'administration_overview' %}active{% endif %}"><i class="bi bi-speedometer2"></i><span>Apercu</span></a>
                         <a href="{% url 'admin_dashboard' %}?tab=account_requests" class="sidebar-subitem {% if nav_item == 'administration_account_requests' %}active{% endif %}"><i class="bi bi-person-plus"></i><span>Demandes comptes</span></a>
                         <a href="{% url 'admin_dashboard' %}?tab=users" class="sidebar-subitem {% if nav_item == 'administration_users' %}active{% endif %}"><i class="bi bi-people"></i><span>Utilisateurs & roles</span></a>
                         <a href="{% url 'admin_dashboard' %}?tab=permissions" class="sidebar-subitem {% if nav_item == 'administration_permissions' %}active{% endif %}"><i class="bi bi-key"></i><span>Permissions</span></a>
-                        <a href="{% url 'admin_dashboard' %}?tab=edit_requests" class="sidebar-subitem {% if nav_item == 'administration_edit_requests' %}active{% endif %}"><i class="bi bi-database-gear"></i><span>Modifications</span></a>
-                        <a href="{% url 'admin_dashboard' %}?tab=audit" class="sidebar-subitem {% if nav_item == 'administration_audit' %}active{% endif %}"><i class="bi bi-activity"></i><span>Audit logs</span></a>
-                        <a href="{% url 'admin_dashboard' %}?tab=settings" class="sidebar-subitem {% if nav_item == 'administration_settings' %}active{% endif %}"><i class="bi bi-gear"></i><span>Settings</span></a>
-                        <a href="{% url 'admin_dashboard' %}?tab=security" class="sidebar-subitem {% if nav_item == 'administration_security' %}active{% endif %}"><i class="bi bi-shield-exclamation"></i><span>Security</span></a>
-                        <a href="{% url 'admin_dashboard' %}?tab=reports" class="sidebar-subitem {% if nav_item == 'administration_reports' %}active{% endif %}"><i class="bi bi-file-earmark-bar-graph"></i><span>Reports</span></a>
+                        <a href="{% url 'admin_dashboard' %}?tab=audit" class="sidebar-subitem {% if nav_item == 'administration_audit' %}active{% endif %}"><i class="bi bi-activity"></i><span>Audit</span></a>
+                        <a href="{% url 'admin_dashboard' %}?tab=settings" class="sidebar-subitem {% if nav_item == 'administration_settings' %}active{% endif %}"><i class="bi bi-gear"></i><span>Parametres</span></a>
+                        <a href="{% url 'admin_dashboard' %}?tab=security" class="sidebar-subitem {% if nav_item == 'administration_security' %}active{% endif %}"><i class="bi bi-shield-exclamation"></i><span>Securite</span></a>
+                        <a href="{% url 'admin_dashboard' %}?tab=reports" class="sidebar-subitem {% if nav_item == 'administration_reports' %}active{% endif %}"><i class="bi bi-file-earmark-bar-graph"></i><span>Rapports</span></a>
                     </div>
                 </div>
             {% endif %}
             {% if utilisateur_connecte.role == "ADMIN" or utilisateur_connecte.role == "RESPONSABLE_RH" %}
-                <a href="{% url 'manual_points' %}" class="sidebar-item nav-link" data-route="/points"><i class="bi bi-plus-slash-minus"></i><span>Correction points</span></a>
+                <a href="{% url 'manual_points' %}" class="sidebar-item nav-link" data-route="/points"><i class="bi bi-plus-slash-minus"></i><span>Correction de points</span></a>
             {% endif %}
         </nav>
 
@@ -201,20 +200,20 @@
     <section class="ai-chat-panel" id="aiChatPanel" hidden>
         <header class="ai-chat-header">
             <div><span class="eyebrow">Assistant securise</span><strong>RH Copilot</strong></div>
-            <button class="btn btn-rh-icon ai-chat-clear" type="button" title="Clear chat"><i class="bi bi-trash3"></i></button>
+            <button class="btn btn-rh-icon ai-chat-clear" type="button" title="Effacer la conversation"><i class="bi bi-trash3"></i></button>
         </header>
         <div class="ai-chat-log" aria-live="polite">
             <div class="ai-chat-message assistant">Bonjour. Je peux vous aider avec les informations accessibles a votre compte.</div>
         </div>
         <div class="ai-chat-suggestions">
-            <button type="button">What is this tab used for?</button>
-            <button type="button">Do I have a shift today?</button>
-            <button type="button">Open my tasks</button>
+            <button type="button">A quoi sert cet onglet ?</button>
+            <button type="button">Ai-je un shift aujourd'hui ?</button>
+            <button type="button">Ouvrir mes taches</button>
         </div>
         <form class="ai-chat-form">
             {% csrf_token %}
-            <input name="message" maxlength="1200" autocomplete="off" placeholder="Ask about your HR data...">
-            <button type="submit" title="Send"><i class="bi bi-send"></i></button>
+            <input name="message" maxlength="1200" autocomplete="off" placeholder="Posez une question RH...">
+            <button type="submit" title="Envoyer"><i class="bi bi-send"></i></button>
         </form>
         <div class="ai-chat-error" hidden></div>
     </section>

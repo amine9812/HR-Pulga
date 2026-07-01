@@ -33,7 +33,7 @@ def require_planning_manager(user_profile):
 
 
 def planning_queryset_for_profile(user_profile):
-    qs = PlanningShift.objects.select_related("employe", "departement", "service")
+    qs = PlanningShift.objects.select_related("employe", "departement", "service").exclude(statut="annule")
     if not user_profile or not user_profile.employe:
         return qs.none()
     if user_profile.role in {Role.ADMIN, Role.RESPONSABLE_RH}:
@@ -125,7 +125,7 @@ def serialize_shift(shift):
         "notes": shift.notes,
         "pointage_status": pointage.get_statut_display() if pointage else "Aucun pointage lie",
         "pointage_hours": float(pointage.total_heures or 0) if pointage else 0,
-        "pointage_comment": pointage.commentaire if pointage else "No planned attendance record has been completed for this shift.",
+        "pointage_comment": pointage.commentaire if pointage else "Aucun pointage termine n'est lie a ce shift.",
     }
 
 
@@ -164,7 +164,7 @@ def pointage_breakdown(pointage):
                 planned_end += timezone.timedelta(days=1)
             expected_hours = max(0, round((planned_end - planned_start).total_seconds() / 3600 - (shift.pause_minutes / 60), 2))
     else:
-        warning = "No planned shift found for this date."
+        warning = "Aucun shift planifie pour cette date."
     late_minutes = max(0, int((pointage.heure_entree - planned_start).total_seconds() / 60)) if pointage.heure_entree and planned_start else 0
     early_minutes = max(0, int((planned_end - pointage.heure_sortie).total_seconds() / 60)) if pointage.heure_sortie and planned_end else 0
     worked_hours = float(pointage.total_heures or 0)

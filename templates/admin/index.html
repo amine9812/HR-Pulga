@@ -5,9 +5,9 @@
         <div class="dashboard-kpi-card tone-warning"><span>Demandes comptes</span><strong>{{ stats.pending_accounts|default:0 }}</strong><small>En attente</small><i class="bi bi-person-plus"></i></div>
         <div class="dashboard-kpi-card tone-success"><span>Utilisateurs actifs</span><strong>{{ stats.active_users|default:0 }}</strong><small>Comptes applicatifs</small><i class="bi bi-people"></i></div>
         <div class="dashboard-kpi-card tone-danger"><span>Inactifs</span><strong>{{ stats.inactive_users|default:0 }}</strong><small>Desactives / suspendus</small><i class="bi bi-person-x"></i></div>
-        <div class="dashboard-kpi-card tone-primary"><span>Audit events</span><strong>{{ stats.audit_events|default:0 }}</strong><small>Journalisees</small><i class="bi bi-activity"></i></div>
+        <div class="dashboard-kpi-card tone-primary"><span>Evenements audit</span><strong>{{ stats.audit_events|default:0 }}</strong><small>Journalises</small><i class="bi bi-activity"></i></div>
         <div class="dashboard-kpi-card tone-info"><span>Admins</span><strong>{{ stats.admin_users|default:0 }}</strong><small>Acces complet</small><i class="bi bi-shield-lock"></i></div>
-        <div class="dashboard-kpi-card tone-danger"><span>Security</span><strong>{{ stats.security_alerts|default:0 }}</strong><small>Comptes inactifs</small><i class="bi bi-shield-exclamation"></i></div>
+        <div class="dashboard-kpi-card tone-danger"><span>Securite</span><strong>{{ stats.security_alerts|default:0 }}</strong><small>Comptes inactifs</small><i class="bi bi-shield-exclamation"></i></div>
     </section>
 
     {% if active_tab == "overview" %}
@@ -39,20 +39,18 @@
             </tbody></table></div>
         </section>
     {% elif active_tab == "permissions" %}
-        <section class="panel"><div class="panel-header"><h3>Permissions & Access Control</h3></div>
+        <section class="panel"><div class="panel-header"><h3>Permissions et controle d'acces</h3></div>
             <div class="feature-dock">
-                <article class="feature-card"><i class="bi bi-shield-lock"></i><strong>Admin</strong><span>Acces complet, approbations, roles, settings</span></article>
+                <article class="feature-card"><i class="bi bi-shield-lock"></i><strong>Admin</strong><span>Acces complet, approbations, roles, parametres</span></article>
                 <article class="feature-card"><i class="bi bi-briefcase"></i><strong>RH</strong><span>Employes, support RH, planning, demandes</span></article>
                 <article class="feature-card"><i class="bi bi-diagram-3"></i><strong>Manager</strong><span>Equipe directe, validations et suivi</span></article>
                 <article class="feature-card"><i class="bi bi-person"></i><strong>Employe</strong><span>Donnees personnelles, demandes, tickets</span></article>
             </div>
         </section>
-    {% elif active_tab == "edit_requests" %}
-        <section class="panel"><div class="panel-header"><h3>Demandes de modification</h3></div><div class="empty-state">Aucune demande de modification critique en attente. Les workflows sensibles actuels journalisent directement leurs actions.</div></section>
     {% elif active_tab == "audit" %}
         <section class="panel"><div class="panel-header"><h3>Journaux d'audit</h3></div>{% include "admin/partials/audit_table.html" %}</section>
     {% elif active_tab == "settings" %}
-        <section class="panel"><div class="panel-header"><h3>System Settings</h3></div>
+        <section class="panel"><div class="panel-header"><h3>Parametres systeme</h3></div>
             <form method="post" action="{% url 'admin_settings_save' %}" class="row g-3">
                 {% csrf_token %}
                 <div class="col-md-5"><label class="form-label">Domaine email entreprise</label><input name="company_email_domain" class="form-control" value="{{ company_email_domain }}" placeholder="company.com"></div>
@@ -63,8 +61,8 @@
                 <div class="col-md-4"><label class="form-label">Expiration reset (minutes)</label><input name="password_reset_code_ttl_minutes" class="form-control" value="{{ settings_map.password_reset_code_ttl_minutes|default:'10' }}" inputmode="numeric"></div>
                 <div class="col-md-4"><label class="form-label">Tentatives reset</label><input name="password_reset_max_attempts" class="form-control" value="{{ settings_map.password_reset_max_attempts|default:'5' }}" inputmode="numeric"></div>
                 <div class="col-md-4"><label class="form-label">Cooldown renvoi reset (secondes)</label><input name="password_reset_resend_cooldown_seconds" class="form-control" value="{{ settings_map.password_reset_resend_cooldown_seconds|default:'60' }}" inputmode="numeric"></div>
-                <div class="col-md-6"><label class="form-label">Brevo sender email</label><input name="brevo_sender_email" class="form-control" value="{{ settings_map.brevo_sender_email }}" placeholder="hr@company.com"></div>
-                <div class="col-md-6"><label class="form-label">Brevo sender name</label><input name="brevo_sender_name" class="form-control" value="{{ settings_map.brevo_sender_name|default:'HR Platform' }}" placeholder="HR Platform"></div>
+                <div class="col-md-6"><label class="form-label">Email expediteur Brevo</label><input name="brevo_sender_email" class="form-control" value="{{ settings_map.brevo_sender_email }}" placeholder="rh@entreprise.com"></div>
+                <div class="col-md-6"><label class="form-label">Nom expediteur Brevo</label><input name="brevo_sender_name" class="form-control" value="{{ settings_map.brevo_sender_name|default:'Plateforme RH' }}" placeholder="Plateforme RH"></div>
                 <div class="col-md-3"><label class="form-label">Template verification</label><input name="brevo_account_verification_template_id" class="form-control" value="{{ settings_map.brevo_account_verification_template_id }}" inputmode="numeric"></div>
                 <div class="col-md-3"><label class="form-label">Template reset</label><input name="brevo_password_reset_template_id" class="form-control" value="{{ settings_map.brevo_password_reset_template_id }}" inputmode="numeric"></div>
                 <div class="col-md-3"><label class="form-label">Template approuve</label><input name="brevo_account_approved_template_id" class="form-control" value="{{ settings_map.brevo_account_approved_template_id }}" inputmode="numeric"></div>
@@ -74,13 +72,13 @@
             </form>
         </section>
     {% elif active_tab == "security" %}
-        <section class="panel"><div class="panel-header"><h3>Security</h3></div><div class="empty-state">Aucun journal de tentative echouee dedie n'est configure. Les comptes inactifs sont visibles dans Utilisateurs & roles.</div></section>
+        <section class="panel"><div class="panel-header"><h3>Securite</h3></div><div class="empty-state">Aucun journal de tentative echouee dedie n'est configure. Les comptes inactifs sont visibles dans Utilisateurs & roles.</div></section>
     {% elif active_tab == "notifications" %}
-        <section class="panel"><div class="panel-header"><h3>Notifications & Templates</h3></div><div class="empty-state">Les notifications utilisent les messages systeme existants. Aucun template editable n'est configure.</div></section>
+        <section class="panel"><div class="panel-header"><h3>Notifications et modeles</h3></div><div class="empty-state">Les notifications utilisent les messages systeme existants. Aucun modele editable n'est configure.</div></section>
     {% elif active_tab == "data" %}
-        <section class="panel"><div class="panel-header"><h3>Data Management</h3></div><div class="empty-state">Les donnees sont conservees; aucune purge destructive n'est exposee dans l'application.</div></section>
+        <section class="panel"><div class="panel-header"><h3>Gestion des donnees</h3></div><div class="empty-state">Les donnees sont conservees; aucune purge destructive n'est exposee dans l'application.</div></section>
     {% else %}
-        <section class="panel"><div class="panel-header"><h3>Reports</h3></div><div class="empty-state">Les rapports administratifs detailles peuvent etre ajoutes sur les journaux existants.</div></section>
+        <section class="panel"><div class="panel-header"><h3>Rapports</h3><div class="planning-export-actions"><a class="btn btn-rh-soft btn-sm" href="{% url 'admin_report_export' 'pdf' %}"><i class="bi bi-filetype-pdf"></i> PDF</a><a class="btn btn-rh-soft btn-sm" href="{% url 'admin_report_export' 'csv' %}"><i class="bi bi-filetype-csv"></i> CSV</a><a class="btn btn-rh-soft btn-sm" href="{% url 'admin_report_export' 'excel' %}"><i class="bi bi-file-earmark-spreadsheet"></i> Excel</a></div></div><div class="empty-state">Exportez les journaux d'audit, utilisateurs, roles et indicateurs de securite.</div></section>
     {% endif %}
 </div>
 {% endblock %}

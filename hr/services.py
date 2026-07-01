@@ -114,15 +114,13 @@ def parametre_pointage_actif():
 
 def shift_planifie_actuel(employe, now=None):
     now = now or timezone.now()
-    window_start = now - timezone.timedelta(hours=2)
-    window_end = now + timezone.timedelta(hours=12)
     shift = (
         PlanningShift.objects.filter(
             employe=employe,
             statut="publie",
             plan_type="normal",
-            date_debut__lte=window_end,
-            date_fin__gte=window_start,
+            date_debut__lte=now,
+            date_fin__gte=now,
         )
         .order_by("date_debut")
         .first()
@@ -130,7 +128,25 @@ def shift_planifie_actuel(employe, now=None):
     if shift:
         return shift
     today = timezone.localdate(now)
-    return shift_permanent_for_day(employe, today)
+    shift = shift_permanent_for_day(employe, today)
+    if not shift:
+        return None
+    start, end = planned_window_for_shift(shift, today)
+    if start <= now <= end:
+        return shift
+    return None
+
+
+def planned_window_for_shift(shift, day):
+    local_shift_start = timezone.localtime(shift.date_debut)
+    start = timezone.make_aware(timezone.datetime.combine(day, local_shift_start.time()))
+    end_time = shift.effective_end_time
+    if not end_time:
+        return start, start
+    end = timezone.make_aware(timezone.datetime.combine(day, end_time))
+    if end <= start:
+        end += timezone.timedelta(days=1)
+    return start, end
 
 
 def shift_permanent_for_day(employe, day):
@@ -161,13 +177,8 @@ def shift_permanent_for_day(employe, day):
 
 def planned_window_for_pointage(pointage, param):
     if pointage.shift:
-        local_shift_start = timezone.localtime(pointage.shift.date_debut)
-        start = timezone.make_aware(timezone.datetime.combine(pointage.date, local_shift_start.time()))
-        end_time = pointage.shift.effective_end_time
-        if end_time:
-            end = timezone.make_aware(timezone.datetime.combine(pointage.date, end_time))
-            if end <= start:
-                end += timezone.timedelta(days=1)
+        start, end = planned_window_for_shift(pointage.shift, pointage.date)
+        if end > start:
             return start, end
     start = timezone.make_aware(timezone.datetime.combine(pointage.date, param.heure_debut_officielle))
     end = timezone.make_aware(timezone.datetime.combine(pointage.date, param.heure_fin_officielle))
@@ -179,13 +190,21 @@ def planned_window_for_pointage(pointage, param):
 @transaction.atomic
 def pointer_entree(employe):
     # TRAITEMENT POINTAGE — empeche un double pointage d'entree dans la meme journee.
-    today = timezone.localdate()
+    now = timezone.now()
+    today = timezone.localdate(now)
     if Pointage.objects.filter(employe=employe, date=today, heure_sortie__isnull=True).exists():
         raise ValidationError("Un pointage ouvert existe deja aujourd'hui.")
     if Pointage.objects.filter(employe=employe, date=today).exists():
         raise ValidationError("Vous avez deja pointe aujourd'hui.")
-    now = timezone.now()
-    pointage = Pointage(employe=employe, shift=shift_planifie_actuel(employe, now), date=today, heure_entree=now, statut="incomplet")
+    shift = shift_planifie_actuel(employe, now)
+    if not shift:
+        raise ValidationError("Aucun shift planifie pour cette periode.")
+    param = parametre_pointage_actif()
+    planned_start, _ = planned_window_for_shift(shift, today)
+    start_limit = planned_start + timezone.timedelta(minutes=param.tolerance_retard_minutes)
+    statut = "retard" if now > start_limit else "incomplet"
+    commentaire = "Retard detecte." if statut == "retard" else ""
+    pointage = Pointage(employe=employe, shift=shift, date=today, heure_entree=now, statut=statut, commentaire=commentaire)
     pointage.full_clean()
     pointage.save()
     return pointage
@@ -196,7 +215,7 @@ def pointer_sortie(employe):
     # TRAITEMENT POINTAGE — calcule heures, retard, sortie anticipee, bonus/penalite de points.
     pointage = Pointage.objects.select_for_update().filter(employe=employe, date=timezone.localdate(), heure_sortie__isnull=True).first()
     if not pointage:
-        raise ValidationError("Aucun pointage d'entree ouvert pour aujourd'hui.")
+        raise ValidationError("Vous devez pointer votre entree avant de pointer votre sortie.")
     now = timezone.now()
     if now < pointage.heure_entree:
         raise ValidationError("La sortie ne peut pas etre avant l'entree.")
@@ -247,13 +266,13 @@ def pointer_sortie(employe):
 @transaction.atomic
 def deduire_solde_conge(demande, cree_par=None):
     # TRAITEMENT SOLDE CONGE — deduit le solde uniquement si les jours disponibles suffisent.
-    if demande.type == TypeConge.SANS_SOLDE:
-        audit_profile(cree_par, "VALIDATION_CONGE_SANS_SOLDE", "Validation sans deduction du solde", "DemandeConge", demande.pk)
+    if demande.type != TypeConge.ANNUEL:
+        audit_profile(cree_par, "VALIDATION_CONGE_SANS_DEDUCTION", "Validation sans deduction du solde annuel", "DemandeConge", demande.pk)
         return
     solde, _ = SoldeConge.objects.select_for_update().get_or_create(employe=demande.employe)
     jours = demande.duree_jours
     if solde.jours_disponibles < jours:
-        raise ValidationError("Solde de conges insuffisant.")
+        raise ValidationError("Solde de conge annuel insuffisant.")
     avant = solde.jours_disponibles
     solde.jours_disponibles -= jours
     solde.jours_utilises += jours
@@ -266,8 +285,8 @@ def deduire_solde_conge(demande, cree_par=None):
 @transaction.atomic
 def rembourser_solde_conge(demande, cree_par=None):
     # TRAITEMENT SOLDE CONGE — rembourse le solde apres annulation d'un conge valide.
-    if demande.type == TypeConge.SANS_SOLDE:
-        audit_profile(cree_par, "ANNULATION_CONGE_SANS_SOLDE", "Annulation sans remboursement du solde", "DemandeConge", demande.pk)
+    if demande.type != TypeConge.ANNUEL:
+        audit_profile(cree_par, "ANNULATION_CONGE_SANS_REMBOURSEMENT", "Annulation sans remboursement du solde annuel", "DemandeConge", demande.pk)
         return
     solde, _ = SoldeConge.objects.select_for_update().get_or_create(employe=demande.employe)
     jours = demande.duree_jours

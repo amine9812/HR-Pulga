@@ -6,16 +6,126 @@
     </div>
     <ul class="nav module-tabs">
         <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#shop-catalogue" type="button">Catalogue</button></li>
-        {% if is_rh %}<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#shop-commandes" type="button">Commandes a traiter</button></li><li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#shop-stock" type="button">Stock materiel</button></li><li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#shop-affectations" type="button">Affectations materiel</button></li><li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#shop-historique" type="button">Historique</button></li>{% else %}<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#shop-commandes" type="button">Mes commandes</button></li><li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#shop-affectations" type="button">Mon materiel</button></li><li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#shop-historique" type="button">Historique points</button></li>{% endif %}
+        {% if is_rh %}
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#shop-commandes" type="button">Commandes a traiter</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#shop-stock" type="button">Stock materiel</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#shop-affectations" type="button">Affectations materiel</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#shop-historique" type="button">Historique</button></li>
+        {% else %}
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#shop-commandes" type="button">Mes commandes</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#shop-affectations" type="button">Mon materiel</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#shop-historique" type="button">Historique points</button></li>
+        {% endif %}
     </ul>
     <div class="tab-content">
         <div class="tab-pane fade show active" id="shop-catalogue">
-            <div class="row g-3"><div class="col-lg-8"><div class="feature-dock">{% for p in produits %}<div class="feature-card"><i class="bi bi-laptop"></i><strong>{{ p.nom }}</strong><span>{{ p.description|truncatechars:80 }}</span><small>{{ p.cout_points }} points - stock {{ p.stock_disponible }}</small></div>{% empty %}<div class="empty-state">Aucun produit.</div>{% endfor %}</div></div><div class="col-lg-4"><form method="post" class="form-panel border-0 shadow-none p-0">{% csrf_token %}<h3 class="form-section-title">Commander</h3>{% include "includes/form_fields.html" %}<div class="form-actions"><button class="btn btn-accent">Demander</button></div></form></div></div>
+            <div class="row g-3">
+                <div class="col-lg-8">
+                    <div class="feature-dock">
+                        {% for p in produits %}
+                            <div class="feature-card">
+                                {% if p.image %}<img src="{{ p.image.url }}" alt="{{ p.nom }}" class="news-card-image">{% else %}<i class="bi bi-laptop"></i>{% endif %}
+                                <strong>{{ p.nom }}</strong>
+                                <span>{{ p.description|truncatechars:120 }}</span>
+                                <small>{{ p.cout_points }} points - stock {{ p.stock_disponible }}{% if p.categorie %} - {{ p.categorie.nom }}{% endif %}</small>
+                            </div>
+                        {% empty %}
+                            <div class="empty-state">Aucun produit actif.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <form method="post" class="form-panel border-0 shadow-none p-0">
+                        {% csrf_token %}
+                        <h3 class="form-section-title">Commander</h3>
+                        {% include "includes/form_fields.html" %}
+                        <div class="form-actions"><button class="btn btn-accent">Demander</button></div>
+                    </form>
+                </div>
+            </div>
         </div>
-        <div class="tab-pane fade" id="shop-commandes"><div class="compact-panel"><table class="table table-compact"><thead><tr><th>Employe</th><th>Produit</th><th>Quantite</th><th>Points</th><th>Statut</th><th>Actions</th></tr></thead><tbody>{% for c in commandes %}<tr><td>{{ c.employe.nom_complet }}</td><td>{{ c.produit.nom }}</td><td>{{ c.quantite }}</td><td>{{ c.cout_total_points }}</td><td>{{ c.statut }}</td><td>{% if is_rh %}<form method="post" action="{% url 'order_process' c.id %}">{% csrf_token %}<button name="action" value="approuver" class="btn btn-sm btn-accent">Approuver</button> <button name="action" value="livrer" class="btn btn-sm btn-outline-dark">Livrer</button> <button name="action" value="refuser" class="btn btn-sm btn-outline-danger">Refuser</button></form>{% endif %}</td></tr>{% empty %}<tr><td colspan="6" class="empty-state">Aucune commande.</td></tr>{% endfor %}</tbody></table></div></div>
-        {% if is_rh %}<div class="tab-pane fade" id="shop-stock"><form method="post" action="{% url 'product_create' %}" enctype="multipart/form-data" class="form-panel border-0 shadow-none p-0 mb-3">{% csrf_token %}<h3 class="form-section-title">Ajouter un produit</h3>{% include "includes/form_fields.html" with form=produit_form %}<div class="form-actions"><button class="btn btn-accent">Ajouter</button></div></form></div>{% endif %}
-        <div class="tab-pane fade" id="shop-affectations"><div class="compact-panel"><table class="table table-compact"><thead><tr><th>Employe</th><th>Produit</th><th>Quantite</th><th>Statut</th><th>Date</th></tr></thead><tbody>{% for m in materiels %}<tr><td>{{ m.employe.nom_complet }}</td><td>{{ m.produit.nom }}</td><td>{{ m.quantite }}</td><td>{{ m.statut }}</td><td>{{ m.date_attribution }}</td></tr>{% empty %}<tr><td colspan="5" class="empty-state">Aucun materiel.</td></tr>{% endfor %}</tbody></table></div></div>
-        <div class="tab-pane fade" id="shop-historique"><div class="compact-panel"><table class="table table-compact"><thead><tr><th>Date</th><th>Type</th><th>Points</th><th>Solde</th><th>Description</th></tr></thead><tbody>{% for t in transactions_boutique %}<tr><td>{{ t.date_transaction }}</td><td>{{ t.type_transaction }}</td><td>{{ t.points }}</td><td>{{ t.solde_apres }}</td><td>{{ t.description }}</td></tr>{% empty %}<tr><td colspan="5" class="empty-state">Aucun mouvement boutique.</td></tr>{% endfor %}</tbody></table></div></div>
+
+        <div class="tab-pane fade" id="shop-commandes">
+            <div class="compact-panel">
+                <table class="table table-compact align-middle">
+                    <thead><tr><th>Employe</th><th>Produit</th><th>Quantite</th><th>Points</th><th>Statut</th><th>Actions</th></tr></thead>
+                    <tbody>
+                        {% for c in commandes_a_traiter %}
+                            <tr>
+                                <td>{{ c.employe.nom_complet }}</td>
+                                <td>{{ c.produit.nom }}</td>
+                                <td>{{ c.quantite }}</td>
+                                <td>{{ c.cout_total_points }}</td>
+                                <td><span class="status-badge status-{{ c.statut }}">{{ c.get_statut_display }}</span></td>
+                                <td>
+                                    {% if is_rh %}
+                                        <form method="post" action="{% url 'order_process' c.id %}" class="d-flex gap-1 flex-wrap">
+                                            {% csrf_token %}
+                                            {% if c.statut == "en_attente" %}
+                                                <button name="action" value="approuver" class="btn btn-sm btn-accent">Approuver</button>
+                                                <button name="action" value="refuser" class="btn btn-sm btn-outline-danger">Refuser</button>
+                                            {% elif c.statut == "approuvee" %}
+                                                <button name="action" value="livrer" class="btn btn-sm btn-outline-dark">Livrer</button>
+                                            {% endif %}
+                                        </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="6" class="empty-state">Aucune commande a traiter.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {% if is_rh %}
+            <div class="tab-pane fade" id="shop-stock">
+                <form method="post" action="{% url 'product_create' %}" enctype="multipart/form-data" class="form-panel border-0 shadow-none p-0 mb-3">
+                    {% csrf_token %}
+                    <h3 class="form-section-title">Ajouter un produit</h3>
+                    {% include "includes/form_fields.html" with form=produit_form %}
+                    <div class="form-actions"><button class="btn btn-accent">Ajouter</button></div>
+                </form>
+                <div class="request-list">
+                    {% for p in produits_stock %}
+                        <div class="request-item align-items-start">
+                            <form method="post" action="{% url 'product_update' p.pk %}" enctype="multipart/form-data" class="row g-2 flex-grow-1">
+                                {% csrf_token %}
+                                <div class="col-md-3"><label class="form-label">Nom</label><input class="form-control form-control-sm" name="nom" value="{{ p.nom }}"></div>
+                                <div class="col-md-3"><label class="form-label">Categorie</label><select class="form-select form-select-sm" name="categorie">{% for cat in categories %}<option value="{{ cat.pk }}" {% if p.categorie_id == cat.pk %}selected{% endif %}>{{ cat.nom }}</option>{% endfor %}</select></div>
+                                <div class="col-md-2"><label class="form-label">Points</label><input class="form-control form-control-sm" name="cout_points" type="number" min="0" value="{{ p.cout_points }}"></div>
+                                <div class="col-md-2"><label class="form-label">Stock</label><input class="form-control form-control-sm" name="stock_disponible" type="number" min="0" value="{{ p.stock_disponible }}"></div>
+                                <div class="col-md-2"><label class="form-label">Actif</label><select class="form-select form-select-sm" name="actif"><option value="on" {% if p.actif %}selected{% endif %}>Oui</option><option value="" {% if not p.actif %}selected{% endif %}>Non</option></select></div>
+                                <div class="col-md-8"><label class="form-label">Description</label><textarea class="form-control form-control-sm" name="description" rows="2">{{ p.description }}</textarea></div>
+                                <div class="col-md-4"><label class="form-label">Image</label><input class="form-control form-control-sm" name="image" type="file" accept=".jpg,.jpeg,.png,.webp"></div>
+                                <div class="col-12 d-flex gap-2">
+                                    <button class="btn btn-sm btn-accent">Modifier</button>
+                                </div>
+                            </form>
+                            <form method="post" action="{% url 'product_delete' p.pk %}" class="ms-md-2 confirm-delete" onsubmit="return confirm('Confirmer la suppression du produit du catalogue ?')">
+                                {% csrf_token %}
+                                <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                            </form>
+                        </div>
+                    {% empty %}
+                        <div class="empty-state">Aucun produit en stock.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+        <div class="tab-pane fade" id="shop-affectations">
+            <div class="compact-panel"><table class="table table-compact"><thead><tr><th>Employe</th><th>Produit</th><th>Quantite</th><th>Statut</th><th>Date</th></tr></thead><tbody>{% for m in materiels %}<tr><td>{{ m.employe.nom_complet }}</td><td>{{ m.produit.nom }}</td><td>{{ m.quantite }}</td><td>{{ m.statut }}</td><td>{{ m.date_attribution }}</td></tr>{% empty %}<tr><td colspan="5" class="empty-state">Aucun materiel.</td></tr>{% endfor %}</tbody></table></div>
+        </div>
+
+        <div class="tab-pane fade" id="shop-historique">
+            {% if is_rh %}
+                <div class="compact-panel"><table class="table table-compact"><thead><tr><th>Date</th><th>Employe</th><th>Produit</th><th>Statut</th><th>Motif</th></tr></thead><tbody>{% for c in commandes_historique %}<tr><td>{{ c.date_validation|default:c.date_commande }}</td><td>{{ c.employe.nom_complet }}</td><td>{{ c.produit.nom }}</td><td>{{ c.get_statut_display }}</td><td>{{ c.motif_refus|default:"-" }}</td></tr>{% empty %}<tr><td colspan="5" class="empty-state">Aucune commande historique.</td></tr>{% endfor %}</tbody></table></div>
+            {% else %}
+                <div class="compact-panel"><table class="table table-compact"><thead><tr><th>Date</th><th>Type</th><th>Points</th><th>Solde</th><th>Description</th></tr></thead><tbody>{% for t in transactions_boutique %}<tr><td>{{ t.date_transaction }}</td><td>{{ t.type_transaction }}</td><td>{{ t.points }}</td><td>{{ t.solde_apres }}</td><td>{{ t.description }}</td></tr>{% empty %}<tr><td colspan="5" class="empty-state">Aucun mouvement boutique.</td></tr>{% endfor %}</tbody></table></div>
+            {% endif %}
+        </div>
     </div>
 </div>
 {% endblock %}

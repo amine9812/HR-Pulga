@@ -3,7 +3,7 @@
     <article class="task-card priority-{{ task.priorite }}">
         <div class="task-card-main">
             <div class="task-card-title">
-                <strong>{{ task.titre }}</strong>
+                <strong><a href="{% url 'task_detail' task.pk %}" class="text-decoration-none text-reset">{{ task.titre }}</a></strong>
                 <span class="status-badge status-{{ task.statut }}">{{ task.get_statut_display }}</span>
             </div>
             <p>{{ task.description|truncatechars:180 }}</p>
@@ -11,6 +11,8 @@
                 <span><i class="bi bi-flag"></i> {{ task.get_priorite_display }}</span>
                 <span><i class="bi bi-person"></i> {{ task.assignee.nom_complet|default:"Equipe ouverte" }}</span>
                 <span><i class="bi bi-calendar-event"></i> {{ task.date_limite|date:"d/m/Y H:i"|default:"Sans deadline" }}</span>
+                {% if task.obligatoire %}<span><i class="bi bi-exclamation-circle"></i> Obligatoire</span>{% endif %}
+                {% if task.piece_jointe %}<span><i class="bi bi-paperclip"></i> Piece jointe</span>{% endif %}
                 {% if task.is_overdue %}<span class="text-danger"><i class="bi bi-exclamation-triangle"></i> En retard</span>{% endif %}
             </div>
             {% if task.message_completion %}<div class="task-note"><strong>Soumission:</strong> {{ task.message_completion }}</div>{% endif %}
@@ -18,6 +20,7 @@
             {% if task.points_attribues %}<div class="task-note"><strong>Points attribues:</strong> {{ task.points_attribues }}</div>{% endif %}
         </div>
         <div class="task-card-actions">
+            <a href="{% url 'task_detail' task.pk %}" class="btn btn-sm btn-rh-soft">Consulter</a>
             {% if show_accept and task.statut == "ouverte" %}
                 <form method="post" action="{% url 'task_status' task.pk %}">{% csrf_token %}<button name="action" value="accept" class="btn btn-sm btn-accent">Accepter</button></form>
             {% endif %}

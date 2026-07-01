@@ -340,7 +340,7 @@ class SoldeConge(models.Model):
     # Solde disponible/utilise et protection contre les valeurs negatives
     # ==================================================
     employe = models.OneToOneField(Employe, on_delete=models.CASCADE, related_name="solde_conge")
-    jours_disponibles = models.DecimalField(max_digits=6, decimal_places=2, default=22)
+    jours_disponibles = models.DecimalField(max_digits=6, decimal_places=2, default=30)
     jours_utilises = models.DecimalField(max_digits=6, decimal_places=2, default=0)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -501,7 +501,7 @@ class PlanningShift(models.Model):
             if effective_end <= self.date_debut:
                 effective_end += timezone.timedelta(days=1)
         if self.date_debut and effective_end and effective_end <= self.date_debut:
-            raise ValidationError({"date_fin": "Overnight shifts are not supported yet. Please create two separate shifts or choose a valid same-day time range."})
+            raise ValidationError({"date_fin": "Les shifts de nuit ne sont pas encore pris en charge. Creez deux shifts separes ou choisissez une plage horaire valide."})
         if self.date_debut and effective_end and self.pause_minutes:
             shift_minutes = (effective_end - self.date_debut).total_seconds() / 60
             if self.pause_minutes >= shift_minutes:
@@ -573,6 +573,7 @@ class TacheEquipe(models.Model):
     shift = models.ForeignKey(PlanningShift, on_delete=models.SET_NULL, null=True, blank=True, related_name="taches")
     priorite = models.CharField(max_length=20, choices=PRIORITES, default="normale")
     mode_affectation = models.CharField(max_length=20, choices=ASSIGNMENT_MODES, default="direct")
+    obligatoire = models.BooleanField(default=False)
     taille = models.CharField(max_length=20, choices=TAILLES, default="moyenne")
     statut = models.CharField(max_length=30, choices=STATUTS, default="a_faire")
     date_debut = models.DateTimeField(null=True, blank=True)
@@ -586,6 +587,8 @@ class TacheEquipe(models.Model):
     points_attribues = models.PositiveIntegerField(default=0)
     points_attribues_par = models.ForeignKey("accounts.UtilisateurProfile", on_delete=models.SET_NULL, null=True, blank=True, related_name="points_taches_attribues")
     points_attribues_at = models.DateTimeField(null=True, blank=True)
+    piece_jointe = models.FileField(upload_to="uploads/taches/", null=True, blank=True)
+    nom_piece_jointe = models.CharField(max_length=255, blank=True)
     cree_par = models.ForeignKey("accounts.UtilisateurProfile", on_delete=models.SET_NULL, null=True, blank=True, related_name="taches_crees")
     terminee_par = models.ForeignKey("accounts.UtilisateurProfile", on_delete=models.SET_NULL, null=True, blank=True, related_name="taches_terminees")
     date_creation = models.DateTimeField(default=timezone.now)
@@ -602,6 +605,12 @@ class TacheEquipe(models.Model):
             raise ValidationError("Le titre de la tache est obligatoire.")
         if not (self.description or "").strip():
             raise ValidationError("La description de la tache est obligatoire.")
+        if self._state.adding and not self.date_debut:
+            raise ValidationError({"date_debut": "La date de debut est obligatoire."})
+        if self._state.adding and not self.date_fin:
+            raise ValidationError({"date_fin": "La date de fin est obligatoire."})
+        if not self.date_limite and self.date_fin:
+            self.date_limite = self.date_fin
         if self.date_debut and self.date_fin and self.date_fin < self.date_debut:
             raise ValidationError({"date_fin": "La date de fin doit etre apres le debut."})
         if self.date_limite and not self.pk and self.statut not in {"terminee", "annulee"} and self.date_limite < timezone.now():
@@ -622,6 +631,27 @@ class TacheEquipe(models.Model):
     @property
     def is_overdue(self):
         return bool(self.date_limite and self.statut not in {"terminee", "annulee", "archivee"} and self.date_limite < timezone.now())
+
+    def save(self, *args, **kwargs):
+        if not self.date_limite and self.date_fin:
+            self.date_limite = self.date_fin
+        super().save(*args, **kwargs)
+
+
+class TacheEquipeMessage(models.Model):
+    tache = models.ForeignKey(TacheEquipe, on_delete=models.CASCADE, related_name="messages")
+    auteur = models.ForeignKey("accounts.UtilisateurProfile", on_delete=models.SET_NULL, null=True, blank=True, related_name="messages_taches")
+    contenu = models.TextField(blank=True)
+    piece_jointe = models.FileField(upload_to="uploads/taches/messages/", null=True, blank=True)
+    nom_piece_jointe = models.CharField(max_length=255, blank=True)
+    date_creation = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["date_creation", "id"]
+
+    def clean(self):
+        if not (self.contenu or "").strip() and not self.piece_jointe:
+            raise ValidationError("Ajoutez un message ou une piece jointe.")
 
 
 class ComptePoints(models.Model):
@@ -644,7 +674,7 @@ class TransactionPoints(models.Model):
     # Historique des gains, deductions et corrections de points
     # ==================================================
     TYPES = [("gain", "Gain"), ("deduction", "Deduction"), ("achat", "Achat"), ("correction", "Correction"), ("remboursement", "Remboursement")]
-    SOURCES = [("pointage", "Pointage"), ("boutique", "Boutique"), ("conge", "Conge"), ("formation", "Formation"), ("manuel", "Manuel"), ("reclamation", "Reclamation"), ("tache", "Tache")]
+    SOURCES = [("pointage", "Pointage"), ("boutique", "Boutique"), ("conge", "Conge"), ("formation", "Formation"), ("manuel", "Manuel"), ("ticket", "Ticket support"), ("reclamation", "Reclamation"), ("tache", "Tache")]
     employe = models.ForeignKey(Employe, on_delete=models.CASCADE, related_name="transactions_points")
     type_transaction = models.CharField(max_length=30, choices=TYPES)
     source = models.CharField(max_length=30, choices=SOURCES)
@@ -664,6 +694,7 @@ class AjustementPointsManuel(models.Model):
     nombre_points = models.PositiveIntegerField()
     motif_obligatoire = models.TextField()
     reclamation_liee = models.ForeignKey("ReclamationRH", on_delete=models.SET_NULL, null=True, blank=True)
+    ticket_lie = models.ForeignKey("ConversationRH", on_delete=models.SET_NULL, null=True, blank=True, related_name="ajustements_points")
     cree_par = models.ForeignKey("accounts.UtilisateurProfile", on_delete=models.SET_NULL, null=True, blank=True, related_name="ajustements_crees")
     date_creation = models.DateTimeField(default=timezone.now)
 
@@ -730,14 +761,14 @@ class ConversationRH(models.Model):
         ("autre", "Autre"),
     ]
     CLOSE_REASONS = [
-        ("resolved", "Issue resolved"),
-        ("handled", "Request handled"),
-        ("duplicate", "Duplicate request"),
-        ("insufficient_info", "Not enough information provided"),
-        ("not_hr", "Not HR-related"),
-        ("invalid", "Invalid or non-actionable request"),
-        ("no_response", "Closed after no response"),
-        ("other", "Other"),
+        ("resolved", "Probleme resolu"),
+        ("handled", "Demande traitee"),
+        ("duplicate", "Demande en double"),
+        ("insufficient_info", "Informations insuffisantes"),
+        ("not_hr", "Hors perimetre RH"),
+        ("invalid", "Demande invalide ou non exploitable"),
+        ("no_response", "Cloture sans reponse"),
+        ("other", "Autre"),
     ]
     sujet = models.CharField(max_length=255)
     numero_ticket = models.PositiveIntegerField(null=True, blank=True, unique=True)
@@ -826,6 +857,16 @@ class Actualite(models.Model):
             raise ValidationError({"date_evenement": "La date d'evenement ne peut pas etre avant la publication."})
 
 
+class ActualitePieceJointe(models.Model):
+    actualite = models.ForeignKey(Actualite, on_delete=models.CASCADE, related_name="pieces_jointes")
+    fichier = models.FileField(upload_to="uploads/actualites/pieces/")
+    nom_fichier = models.CharField(max_length=255)
+    date_upload = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["nom_fichier"]
+
+
 class CategorieProduit(models.Model):
     nom = models.CharField(max_length=120, unique=True)
 
@@ -844,6 +885,12 @@ class Produit(models.Model):
 
     def __str__(self):
         return self.nom
+
+    def clean(self):
+        if not (self.description or "").strip():
+            raise ValidationError({"description": "La description du produit est obligatoire."})
+        if not self.categorie:
+            raise ValidationError({"categorie": "La categorie du produit est obligatoire."})
 
 
 class AffectationMateriel(models.Model):

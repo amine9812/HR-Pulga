@@ -36,19 +36,25 @@
                 {% if shift_today %}
                     Shift planifie : {{ shift_today.titre }} de {{ shift_today.date_debut|date:"H:i" }} a {% if shift_today.effective_end_time %}{{ shift_today.effective_end_time|time:"H:i" }}{% else %}--{% endif %}.
                 {% else %}
-                    Aucun shift publie pour vous aujourd'hui. Le calcul utilise un fallback securise et signale l'absence de reference Planning.
+                    Aucun shift publie pour vous aujourd'hui.
                 {% endif %}
             </p>
         </div>
         <div class="hero-actions">
-            <form method="post" action="{% url 'attendance_checkin' %}" class="d-inline">
-                {% csrf_token %}
-                <button class="btn btn-rh-primary"><i class="bi bi-box-arrow-in-right"></i> Pointer l'entree</button>
-            </form>
-            <form method="post" action="{% url 'attendance_checkout' %}" class="d-inline">
-                {% csrf_token %}
-                <button class="btn btn-rh-secondary"><i class="bi bi-box-arrow-right"></i> Pointer la sortie</button>
-            </form>
+            {% if not today and active_shift_now %}
+                <form method="post" action="{% url 'attendance_checkin' %}" class="d-inline">
+                    {% csrf_token %}
+                    <button class="btn btn-rh-primary"><i class="bi bi-box-arrow-in-right"></i> Pointer l'entree</button>
+                </form>
+            {% elif not today %}
+                <button class="btn btn-rh-primary" disabled><i class="bi bi-box-arrow-in-right"></i> Aucun shift actif</button>
+            {% endif %}
+            {% if has_open_pointage %}
+                <form method="post" action="{% url 'attendance_checkout' %}" class="d-inline">
+                    {% csrf_token %}
+                    <button class="btn btn-rh-secondary"><i class="bi bi-box-arrow-right"></i> Pointer la sortie</button>
+                </form>
+            {% endif %}
         </div>
     </div>
     <div class="request-item">
@@ -56,7 +62,7 @@
             <strong>Statut personnel aujourd'hui</strong>
             <small>
                 {% if today %}
-                    Entree {{ today.heure_entree|date:"H:i" }} · Sortie {{ today.heure_sortie|date:"H:i"|default:"-" }} · {{ today.total_heures }} h
+                    Entree {{ today.heure_entree|date:"H:i" }} - Sortie {{ today.heure_sortie|date:"H:i"|default:"-" }} - {{ today.total_heures }} h
                 {% else %}
                     Aucun pointage personnel enregistre aujourd'hui.
                 {% endif %}
@@ -76,7 +82,7 @@
     <div class="table-responsive">
         <table class="table table-compact align-middle">
             <thead>
-                <tr><th>Employe</th><th>Date</th><th>Shift</th><th>Planned</th><th>Actual</th><th>Heures</th><th>Variance</th><th>Statut</th><th>Points</th></tr>
+                <tr><th>Employe</th><th>Date</th><th>Shift</th><th>Planifie</th><th>Reel</th><th>Heures</th><th>Ecart</th><th>Statut</th><th>Points</th></tr>
             </thead>
             <tbody>
                 {% for detail in pointage_details %}
@@ -85,10 +91,10 @@
                         <td>{{ p.employe.nom_complet }}</td>
                         <td>{{ p.date }}</td>
                         <td>{{ p.shift.titre|default:"Non planifie" }}</td>
-                        <td>{% if detail.planned_start %}{{ detail.planned_start|date:"H:i" }} - {{ detail.planned_end|date:"H:i" }}{% else %}<span class="text-warning">No planned shift found for this date.</span>{% endif %}</td>
+                        <td>{% if detail.planned_start %}{{ detail.planned_start|date:"H:i" }} - {{ detail.planned_end|date:"H:i" }}{% else %}<span class="text-warning">Aucun shift planifie pour cette date.</span>{% endif %}</td>
                         <td>{{ p.heure_entree|date:"H:i" }} - {{ p.heure_sortie|date:"H:i"|default:"-" }}</td>
                         <td>{{ p.total_heures }}</td>
-                        <td>Missing {{ detail.missing_hours }} h / Late {{ detail.late_minutes }} min / Early {{ detail.early_minutes }} min / OT {{ detail.overtime_hours }} h</td>
+                        <td>Manque {{ detail.missing_hours }} h / Retard {{ detail.late_minutes }} min / Sortie anticipee {{ detail.early_minutes }} min / Sup. {{ detail.overtime_hours }} h</td>
                         <td><span class="status-badge status-{{ p.statut }}">{{ p.get_statut_display }}</span></td>
                         <td>{{ p.points_calcules }}</td>
                     </tr>

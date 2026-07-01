@@ -270,7 +270,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 actions.forEach(function (action) {
                     const button = document.createElement("button");
                     button.type = "button";
-                    button.textContent = action.label || "Open";
+                    button.textContent = action.label || "Ouvrir";
                     button.addEventListener("click", function () {
                         if (action.url) window.location.href = action.url;
                     });
@@ -300,7 +300,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 const retry = document.createElement("button");
                 retry.type = "button";
                 retry.className = "ai-chat-retry";
-                retry.textContent = "Retry";
+                retry.textContent = "Reessayer";
                 retry.addEventListener("click", function () {
                     if (!input || !form || pendingRequest) return;
                     input.value = retryMessage;
@@ -321,7 +321,7 @@ document.addEventListener("DOMContentLoaded", function () {
         clearButton?.addEventListener("click", function () {
             sessionStorage.removeItem(storageKey);
             log.innerHTML = "";
-            addMessage("assistant", "Chat cleared. I will only use information available to your account.");
+            addMessage("assistant", "Conversation effacee. Je n'utiliserai que les informations accessibles a votre compte.");
             setError("");
         });
         suggestions?.addEventListener("click", function (event) {
@@ -337,7 +337,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
             const message = (input.value || "").trim();
             if (!message) {
-                setError("Please enter a message.");
+                setError("Veuillez saisir un message.");
                 return;
             }
             setError("");
@@ -345,7 +345,7 @@ document.addEventListener("DOMContentLoaded", function () {
             lastMessage = message;
             setBusy(true);
             addMessage("user", message);
-            const loading = addMessage("assistant loading", "Assistant is checking your permissions and data...");
+            const loading = addMessage("assistant loading", "L'assistant verifie vos permissions et les donnees accessibles...");
             const controller = new AbortController();
             const timeoutId = window.setTimeout(function () {
                 controller.abort();
@@ -367,19 +367,19 @@ document.addEventListener("DOMContentLoaded", function () {
                 window.clearTimeout(timeoutId);
                 if (!response.ok || !payload.ok) {
                     if (payload.error === "session_expired" || response.status === 401) {
-                        throw new Error(payload.message || "Your session has expired. Please log in again.");
+                        throw new Error(payload.message || "Votre session a expire. Veuillez vous reconnecter.");
                     }
-                    throw new Error(payload.message || "I could not reach the assistant service right now. Please try again.");
+                    throw new Error(payload.message || "Je ne peux pas joindre le service assistant pour le moment. Veuillez reessayer.");
                 }
                 addMessage("assistant", payload.data.answer, payload.data.actions || []);
             } catch (error) {
                 loading.remove();
                 window.clearTimeout(timeoutId);
                 const messageText = error.name === "AbortError"
-                    ? "The assistant took too long to respond. Please try again."
-                    : (error.message || "Frontend chat send failed. Please try again.");
+                    ? "L'assistant a mis trop de temps a repondre. Veuillez reessayer."
+                    : (error.message || "L'envoi du message a echoue. Veuillez reessayer.");
                 setError(messageText, lastMessage);
-                addMessage("assistant", "I could not reach the assistant service right now. Please try again.");
+                addMessage("assistant", "Je ne peux pas joindre le service assistant pour le moment. Veuillez reessayer.");
             } finally {
                 setBusy(false);
                 input?.focus();

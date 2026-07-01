@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<article class="panel">
+    <div class="panel-header">
+        <div>
+            <h3>{{ actualite.titre }}</h3>
+            <p class="text-soft mb-0">Publiee le {{ actualite.date_publication|date:"d/m/Y H:i" }}{% if actualite.auteur %} par {{ actualite.auteur.employe.nom_complet|default:actualite.auteur.user.username }}{% endif %}</p>
+        </div>
+    </div>
+    {% if actualite.image %}
+        <img src="{{ actualite.image.url }}" alt="{{ actualite.titre }}" class="news-detail-image mb-3">
+    {% endif %}
+    <div class="news-detail-content">{{ actualite.contenu|linebreaks }}</div>
+    {% if actualite.date_evenement %}<p class="text-soft">Date evenement: {{ actualite.date_evenement|date:"d/m/Y" }}</p>{% endif %}
+    <section class="mt-3">
+        <h3 class="form-section-title">Pieces jointes</h3>
+        {% for piece in actualite.pieces_jointes.all %}
+            <a class="message-attachment mb-2" href="{{ piece.fichier.url }}" target="_blank" rel="noopener"><i class="bi bi-paperclip"></i><span>{{ piece.nom_fichier }}</span></a>
+        {% empty %}
+            <div class="empty-state">Aucune piece jointe.</div>
+        {% endfor %}
+    </section>
+    <div class="form-actions"><a class="btn btn-rh-soft" href="{% url 'news_list' %}">Retour aux actualites</a></div>
+</article>
+{% endblock %}

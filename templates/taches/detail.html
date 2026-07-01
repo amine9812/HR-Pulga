@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row g-3">
+    <div class="col-xl-8">
+        <section class="panel">
+            <div class="panel-header">
+                <div>
+                    <h3>{{ task.titre }}</h3>
+                    <p class="mb-0 text-soft">{{ task.description }}</p>
+                </div>
+                <span class="status-badge status-{{ task.statut }}">{{ task.get_statut_display }}</span>
+            </div>
+            <div class="task-meta mb-3">
+                <span><i class="bi bi-person"></i> {{ task.assignee.nom_complet|default:"Equipe ouverte" }}</span>
+                <span><i class="bi bi-flag"></i> {{ task.get_priorite_display }}</span>
+                <span><i class="bi bi-calendar-event"></i> {{ task.date_debut|date:"d/m/Y H:i" }} - {{ task.date_fin|date:"d/m/Y H:i" }}</span>
+                <span><i class="bi bi-hourglass-split"></i> Deadline {{ task.date_limite|date:"d/m/Y H:i"|default:"Non definie" }}</span>
+                {% if task.obligatoire %}<span><i class="bi bi-exclamation-circle"></i> Obligatoire</span>{% endif %}
+            </div>
+            {% if task.piece_jointe %}
+                <a class="message-attachment mb-3" href="{{ task.piece_jointe.url }}" target="_blank" rel="noopener">
+                    <i class="bi bi-paperclip"></i>
+                    <span>{{ task.nom_piece_jointe|default:"Piece jointe" }}</span>
+                </a>
+            {% endif %}
+            {% if task.message_completion %}<div class="task-note"><strong>Soumission:</strong> {{ task.message_completion }}</div>{% endif %}
+            {% if task.feedback_manager %}<div class="task-note"><strong>Feedback manager:</strong> {{ task.feedback_manager }}</div>{% endif %}
+        </section>
+
+        <section class="panel mt-3">
+            <div class="panel-header"><h3>Conversation</h3></div>
+            <div class="message-thread">
+                {% for message in messages_tache %}
+                    <article class="message-bubble {% if message.auteur_id == request.user.profile.id %}mine{% endif %}">
+                        <div class="message-meta">
+                            <strong>{{ message.auteur.employe.nom_complet|default:message.auteur.user.username|default:"Utilisateur" }}</strong>
+                            <small>{{ message.date_creation|date:"d/m/Y H:i" }}</small>
+                        </div>
+                        {% if message.contenu %}<p>{{ message.contenu }}</p>{% endif %}
+                        {% if message.piece_jointe %}
+                            <a class="message-attachment" href="{{ message.piece_jointe.url }}" target="_blank" rel="noopener">
+                                <i class="bi bi-paperclip"></i>
+                                <span>{{ message.nom_piece_jointe|default:"Piece jointe" }}</span>
+                            </a>
+                        {% endif %}
+                    </article>
+                {% empty %}
+                    <div class="empty-state">Aucun message pour cette tache. La conversation apparaitra ici.</div>
+                {% endfor %}
+            </div>
+            {% if can_reply %}
+                <form method="post" enctype="multipart/form-data" class="row g-2 mt-3">
+                    {% csrf_token %}
+                    <div class="col-12">{{ message_form.contenu.label_tag }}{{ message_form.contenu }}</div>
+                    <div class="col-md-8">{{ message_form.piece_jointe.label_tag }}{{ message_form.piece_jointe }}<small class="text-soft d-block mt-1">PDF, DOC, DOCX, JPG, JPEG, PNG. Max 5 Mo.</small></div>
+                    <div class="col-md-4 d-flex align-items-end"><button class="btn btn-accent w-100"><i class="bi bi-reply"></i> Repondre</button></div>
+                </form>
+            {% endif %}
+        </section>
+    </div>
+    <div class="col-xl-4">
+        <section class="panel">
+            <div class="panel-header"><h3>Actions</h3></div>
+            <div class="task-card-actions">
+                {% if task.statut == "ouverte" %}
+                    <form method="post" action="{% url 'task_status' task.pk %}">{% csrf_token %}<button name="action" value="accept" class="btn btn-accent w-100">Accepter</button></form>
+                {% endif %}
+                {% if task.statut == "acceptee" or task.statut == "a_faire" or task.statut == "changements" %}
+                    <form method="post" action="{% url 'task_status' task.pk %}">{% csrf_token %}<button name="action" value="start" class="btn btn-outline-dark w-100">Demarrer</button></form>
+                {% endif %}
+                {% if task.statut == "en_cours" or task.statut == "changements" %}
+                    <form method="post" action="{% url 'task_status' task.pk %}" class="task-inline-form">
+                        {% csrf_token %}
+                        <textarea name="message_completion" class="form-control form-control-sm" rows="3" placeholder="Message de completion..."></textarea>
+                        <button name="action" value="submit" class="btn btn-accent w-100">Soumettre</button>
+                    </form>
+                {% endif %}
+                {% if can_manage_task and task.statut == "soumise" %}
+                    <form method="post" action="{% url 'task_status' task.pk %}" class="task-inline-form">
+                        {% csrf_token %}
+                        <textarea name="feedback_manager" class="form-control form-control-sm" rows="3" placeholder="Feedback manager..."></textarea>
+                        <input name="points" class="form-control form-control-sm" type="number" min="0" max="30" value="{{ task.points_suggeres }}">
+                        <button name="action" value="approve" class="btn btn-success w-100">Approuver</button>
+                        <button name="action" value="changes" class="btn btn-outline-secondary w-100">Demander des changements</button>
+                        <button name="action" value="reject" class="btn btn-outline-danger w-100">Refuser</button>
+                    </form>
+                {% endif %}
+                <a class="btn btn-rh-soft w-100" href="{% url 'team_tasks' %}?tab=mine">Retour aux taches</a>
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}

@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+import csv
 import json
 
 from django.contrib import messages
@@ -7,7 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import Count, Q, Sum
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -686,9 +687,9 @@ def admin_dashboard(request):
         messages.error(request, "Acces administration reserve aux administrateurs.")
         return redirect("dashboard")
     active_tab = request.GET.get("tab", "overview")
-    allowed_tabs = {"overview", "account_requests", "users", "permissions", "edit_requests", "audit", "settings", "security", "notifications", "data", "reports"}
+    allowed_tabs = {"overview", "account_requests", "users", "permissions", "audit", "settings", "security", "notifications", "data", "reports"}
     if active_tab not in allowed_tabs:
-        messages.warning(request, "Section Administration introuvable. Retour a l'Overview.")
+        messages.warning(request, "Section Administration introuvable. Retour a l'apercu.")
         return redirect(f"{reverse('admin_dashboard')}?tab=overview")
     users = User.objects.select_related("profile", "profile__employe").order_by("username")
     all_account_requests = AccountCreationRequest.objects.select_related("employee", "user", "decided_by", "onboarding_task").order_by("-submitted_at")
@@ -825,12 +826,70 @@ def admin_settings_save(request):
     return redirect(f"{reverse('admin_dashboard')}?tab=settings")
 
 
+def admin_pdf_bytes(title, lines):
+    def esc(value):
+        return str(value).replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+
+    stream_lines = ["BT", "/F1 10 Tf", "40 800 Td", "14 TL", f"({esc(title)}) Tj", "T*"]
+    for line in lines[:45]:
+        stream_lines.append(f"({esc(line)[:140]}) Tj")
+        stream_lines.append("T*")
+    stream_lines.append("ET")
+    stream = "\n".join(stream_lines).encode("latin-1", errors="replace")
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+        b"<< /Length " + str(len(stream)).encode("ascii") + b" >>\nstream\n" + stream + b"\nendstream",
+    ]
+    pdf = [b"%PDF-1.4\n"]
+    offsets = [0]
+    for index, obj in enumerate(objects, start=1):
+        offsets.append(sum(len(part) for part in pdf))
+        pdf.append(f"{index} 0 obj\n".encode("ascii") + obj + b"\nendobj\n")
+    xref_offset = sum(len(part) for part in pdf)
+    pdf.append(f"xref\n0 {len(objects) + 1}\n0000000000 65535 f \n".encode("ascii"))
+    for offset in offsets[1:]:
+        pdf.append(f"{offset:010d} 00000 n \n".encode("ascii"))
+    pdf.append(f"trailer << /Root 1 0 R /Size {len(objects) + 1} >>\nstartxref\n{xref_offset}\n%%EOF".encode("ascii"))
+    return b"".join(pdf)
+
+
+@login_required
+def admin_report_export(request, file_format):
+    if not admin_only(request):
+        messages.error(request, "Action reservee aux administrateurs.")
+        return redirect("dashboard")
+    file_format = (file_format or "").lower()
+    audit_actions = HistoriqueAction.objects.select_related("utilisateur", "utilisateur__user").order_by("-date_action")[:500]
+    users = User.objects.select_related("profile").order_by("username")
+    rows = [["Type", "Date", "Utilisateur", "Detail"]]
+    rows.extend(["Audit", action.date_action.strftime("%d/%m/%Y %H:%M"), action.utilisateur.user.username if action.utilisateur and action.utilisateur.user else "-", f"{action.action} - {action.details}"] for action in audit_actions)
+    rows.extend(["Utilisateur", "-", user.username, f"role={user.profile.role}; actif={user.is_active and user.profile.actif}"] for user in users[:200])
+    filename = f"rapport-administration-{timezone.localdate().isoformat()}"
+    if file_format == "pdf":
+        lines = [" | ".join(row) for row in rows]
+        response = HttpResponse(admin_pdf_bytes("Rapport administration", lines), content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}.pdf"'
+        return response
+    if file_format not in {"csv", "excel"}:
+        messages.error(request, "Format de rapport invalide.")
+        return redirect(f"{reverse('admin_dashboard')}?tab=reports")
+    response = HttpResponse(content_type="text/csv; charset=utf-8" if file_format == "csv" else "application/vnd.ms-excel; charset=utf-8")
+    response["Content-Disposition"] = f'attachment; filename="{filename}.{"csv" if file_format == "csv" else "xls"}"'
+    response.write("\ufeff")
+    writer = csv.writer(response)
+    writer.writerows(rows)
+    return response
+
+
 @csrf_exempt
 def chatbot_api(request):
     if request.method != "POST":
         return JsonResponse({"ok": False, "message": "Method not allowed."}, status=405)
     if not request.user.is_authenticated:
-        return JsonResponse({"ok": False, "error": "session_expired", "message": "Your session has expired. Please log in again."}, status=401)
+        return JsonResponse({"ok": False, "error": "session_expired", "message": "Votre session a expire. Veuillez vous reconnecter."}, status=401)
     try:
         payload = json.loads(request.body.decode("utf-8") or "{}")
         result = assistant_response(request.user, payload.get("message", ""))
@@ -843,4 +902,4 @@ def chatbot_api(request):
         message = " ".join(exc.messages) if hasattr(exc, "messages") else str(exc)
         return JsonResponse({"ok": False, "message": message}, status=400)
     except Exception:
-        return JsonResponse({"ok": False, "message": "I could not reach the assistant service right now. Please try again."}, status=500)
+        return JsonResponse({"ok": False, "message": "Je ne peux pas joindre le service assistant pour le moment. Veuillez reessayer."}, status=500)

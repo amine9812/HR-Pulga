@@ -3,17 +3,39 @@
 <div class="panel">
     <ul class="nav module-tabs">
         <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#news-publiees" type="button">Actualites publiees</button></li>
-        {% if form %}<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#news-brouillons" type="button">Brouillons</button></li>{% endif %}
-        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#news-archives" type="button">Anciennes actualites / Archives</button></li>
-        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#news-evenements" type="button">Evenements</button></li>
         {% if form %}<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#news-creer" type="button">Publier</button></li>{% endif %}
     </ul>
     <div class="tab-content">
-        <div class="tab-pane fade show active" id="news-publiees"><div class="feature-dock">{% for a in actualites %}{% if a.statut == "publiee" %}<article class="feature-card"><i class="bi bi-newspaper"></i><strong>{{ a.titre }}</strong><span>{{ a.contenu|truncatechars:120 }}</span><small>{{ a.date_publication|default:"-" }}</small></article>{% endif %}{% empty %}<div class="empty-state">Aucune actualite.</div>{% endfor %}</div></div>
-        {% if form %}<div class="tab-pane fade" id="news-brouillons"><div class="feature-dock">{% for a in actualites %}{% if a.statut == "brouillon" %}<article class="feature-card"><i class="bi bi-pencil-square"></i><strong>{{ a.titre }}</strong><span>{{ a.contenu|truncatechars:120 }}</span></article>{% endif %}{% endfor %}</div></div>{% endif %}
-        <div class="tab-pane fade" id="news-archives"><div class="feature-dock">{% for a in actualites %}{% if a.statut == "archivee" %}<article class="feature-card"><i class="bi bi-archive"></i><strong>{{ a.titre }}</strong><span>{{ a.contenu|truncatechars:120 }}</span></article>{% endif %}{% endfor %}</div></div>
-        <div class="tab-pane fade" id="news-evenements"><div class="feature-dock">{% for a in actualites %}{% if a.date_evenement %}<article class="feature-card"><i class="bi bi-calendar-event"></i><strong>{{ a.titre }}</strong><span>{{ a.contenu|truncatechars:100 }}</span><small>{{ a.date_evenement }}</small></article>{% endif %}{% endfor %}</div></div>
-        {% if form %}<div class="tab-pane fade" id="news-creer"><form method="post" action="{% url 'news_create' %}" enctype="multipart/form-data" class="form-panel border-0 shadow-none p-0">{% csrf_token %}<h3 class="form-section-title">Publier une actualite</h3>{% include "includes/form_fields.html" %}<div class="form-actions"><button class="btn btn-accent">Enregistrer</button></div></form></div>{% endif %}
+        <div class="tab-pane fade show active" id="news-publiees">
+            <div class="feature-dock">
+                {% for a in actualites %}
+                    <article class="feature-card">
+                        {% if a.image %}<img src="{{ a.image.url }}" alt="{{ a.titre }}" class="news-card-image">{% else %}<i class="bi bi-newspaper"></i>{% endif %}
+                        <strong><a href="{% url 'news_detail' a.pk %}" class="text-decoration-none text-reset">{{ a.titre }}</a></strong>
+                        <span>{{ a.contenu|truncatechars:160 }}</span>
+                        <small>{{ a.date_publication|date:"d/m/Y H:i"|default:"-" }}</small>
+                        <a href="{% url 'news_detail' a.pk %}" class="btn btn-sm btn-rh-soft">Consulter</a>
+                    </article>
+                {% empty %}
+                    <div class="empty-state">Aucune actualite publiee.</div>
+                {% endfor %}
+            </div>
+        </div>
+        {% if form %}
+            <div class="tab-pane fade" id="news-creer">
+                <form method="post" action="{% url 'news_create' %}" enctype="multipart/form-data" class="form-panel border-0 shadow-none p-0">
+                    {% csrf_token %}
+                    <h3 class="form-section-title">Publier une actualite</h3>
+                    {% include "includes/form_fields.html" %}
+                    <div class="file-field mt-3">
+                        <label class="form-label">Pieces jointes</label>
+                        <input class="form-control" type="file" name="pieces_jointes" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                        <small class="selected-file text-soft">PDF, DOC, DOCX, JPG, JPEG, PNG. Max 5 Mo par fichier.</small>
+                    </div>
+                    <div class="form-actions"><button class="btn btn-accent">Publier</button></div>
+                </form>
+            </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

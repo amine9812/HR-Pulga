@@ -5431,6 +5431,25 @@ label {
     min-width: 220px;
 }
 
+.news-card-image {
+    width: 100%;
+    max-height: 180px;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.news-detail-image {
+    width: 100%;
+    max-height: 460px;
+    object-fit: contain;
+    border-radius: 8px;
+    background: var(--rh-surface-soft);
+}
+
+.news-detail-content {
+    line-height: 1.7;
+}
+
 @media (max-width: 767.98px) {
     .payroll-horizontal-row {
         grid-template-columns: 1fr auto;

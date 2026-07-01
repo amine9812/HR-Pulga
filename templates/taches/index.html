@@ -11,22 +11,23 @@
 {% elif active_tab == "create" and can_manage %}
 <div class="form-panel">
     <div class="panel-header"><div><h3>Creer une tache</h3><p class="mb-0 text-soft">Affectation directe, equipe ou tache ouverte.</p></div></div>
-    <form method="post" action="{% url 'task_create' %}" class="row g-3">
+    <form method="post" action="{% url 'task_create' %}" enctype="multipart/form-data" class="row g-3">
         {% csrf_token %}
         <div class="col-12"><div class="empty-state text-start mb-0">Les listes Departement, Service et Employe sont limitees a votre perimetre manager. Les taches "Toute l'equipe" creent une tache visible pour chaque collaborateur eligible.</div></div>
         <div class="col-md-5">{{ form.titre.label_tag }}{{ form.titre }}</div>
         <div class="col-md-3">{{ form.mode_affectation.label_tag }}{{ form.mode_affectation }}</div>
         <div class="col-md-2">{{ form.priorite.label_tag }}{{ form.priorite }}</div>
         <div class="col-md-2">{{ form.taille.label_tag }}{{ form.taille }}</div>
+        <div class="col-md-2 d-flex align-items-end"><label class="form-check d-flex gap-2 align-items-center mb-2">{{ form.obligatoire }} <span>{{ form.obligatoire.label }}</span></label></div>
         <div class="col-md-3">{{ form.departement.label_tag }}{{ form.departement }}</div>
         <div class="col-md-3">{{ form.service.label_tag }}{{ form.service }}</div>
         <div class="col-md-3">{{ form.employe.label_tag }}{{ form.employe }}</div>
-        <div class="col-md-3">{{ form.shift.label_tag }}{{ form.shift }}</div>
         <div class="col-md-3">{{ form.date_debut.label_tag }}{{ form.date_debut }}</div>
         <div class="col-md-3">{{ form.date_fin.label_tag }}{{ form.date_fin }}</div>
         <div class="col-md-3">{{ form.date_limite.label_tag }}{{ form.date_limite }}</div>
         <div class="col-md-3">{{ form.auto_assign_at.label_tag }}{{ form.auto_assign_at }}</div>
         <div class="col-md-3">{{ form.max_acceptations.label_tag }}{{ form.max_acceptations }}</div>
+        <div class="col-md-6">{{ form.piece_jointe.label_tag }}{{ form.piece_jointe }}<small class="text-soft d-block mt-1">PDF, DOC, DOCX, JPG, JPEG, PNG. Max 5 Mo.</small></div>
         <div class="col-12">{{ form.description.label_tag }}{{ form.description }}</div>
         <div class="col-12"><button class="btn btn-accent"><i class="bi bi-list-check"></i> Creer la tache</button></div>
     </form>

@@ -102,6 +102,8 @@ class TeamTaskScopeWorkflowTests(TestCase):
             "service": self.service.pk,
             "priorite": "haute",
             "taille": "moyenne",
+            "date_debut": (timezone.now() + timedelta(days=1)).strftime("%Y-%m-%dT%H:%M"),
+            "date_fin": (timezone.now() + timedelta(days=2)).strftime("%Y-%m-%dT%H:%M"),
             "date_limite": (timezone.now() + timedelta(days=2)).strftime("%Y-%m-%dT%H:%M"),
             "max_acceptations": 1,
         }
@@ -379,12 +381,11 @@ class AdministrationWorkflowTests(TestCase):
             ("overview", "Demandes recentes"),
             ("account_requests", "Demandes de creation de compte"),
             ("users", "Utilisateurs & roles"),
-            ("permissions", "Permissions & Access Control"),
-            ("edit_requests", "Demandes de modification"),
+            ("permissions", "Permissions et controle d'acces"),
             ("audit", "Journaux d'audit"),
-            ("settings", "System Settings"),
-            ("security", "Security"),
-            ("reports", "Reports"),
+            ("settings", "Parametres systeme"),
+            ("security", "Securite"),
+            ("reports", "Rapports"),
         ]:
             response = self.client.get(reverse("admin_dashboard"), {"tab": tab})
             self.assertEqual(response.status_code, 200)
@@ -609,6 +610,29 @@ class NewHrFeatureAbuseTests(TestCase):
         self.assertEqual(demande.statut, StatutDemande.VALIDEE)
         self.assertEqual(float(self.emp.solde_conge.jours_disponibles), 3.0)
         self.assertEqual(float(self.emp.solde_conge.jours_utilises), 0.0)
+
+    def test_sick_and_maternity_leave_do_not_consume_annual_balance(self):
+        start = timezone.localdate() + timedelta(days=20)
+        end = start + timedelta(days=6)
+        sick_form = DemandeCongeForm(employee=self.emp, data={"type": TypeConge.MALADIE, "date_debut": start, "date_fin": end, "motif": "Certificat medical"})
+        self.assertTrue(sick_form.is_valid(), sick_form.errors)
+
+        demande = DemandeConge.objects.create(type=TypeConge.MALADIE, date_debut=start, date_fin=end, employe=self.emp)
+        deduire_solde_conge(demande)
+        self.emp.solde_conge.refresh_from_db()
+        self.assertEqual(float(self.emp.solde_conge.jours_disponibles), 3.0)
+        self.assertEqual(float(self.emp.solde_conge.jours_utilises), 0.0)
+
+    def test_sick_and_maternity_leave_require_attachment_on_submit(self):
+        self.client.login(username="emp2", password="emp123")
+        start = timezone.localdate() + timedelta(days=30)
+        response = self.client.post(
+            reverse("conge_submit"),
+            {"type": TypeConge.MALADIE, "date_debut": start, "date_fin": start, "motif": "Maladie"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "justificatif est obligatoire")
+        self.assertFalse(DemandeConge.objects.filter(employe=self.emp, type=TypeConge.MALADIE, date_debut=start).exists())
 
     def test_checkout_before_checkin_blocked_by_model(self):
         p = Pointage(employe=self.emp, date=timezone.localdate(), heure_entree=timezone.now(), heure_sortie=timezone.now() - timedelta(hours=1))
@@ -1057,9 +1081,10 @@ class NewHrFeatureAbuseTests(TestCase):
 
     def test_product_and_formation_creation_are_audited(self):
         self.client.login(username="rh2", password="rh123")
+        categorie = CategorieProduit.objects.create(nom="Accessoires")
 
         self.client.post(reverse("formation_create"), {"titre": "Ethique", "description": "Module interne", "categorie": "RH", "duree_estimee_heures": 2, "points_recompense": 0, "actif": "on"})
-        self.client.post(reverse("product_create"), {"nom": "Souris", "description": "Materiel", "cout_points": 5, "stock_disponible": 3, "actif": "on"})
+        self.client.post(reverse("product_create"), {"nom": "Souris", "categorie": categorie.pk, "description": "Materiel", "cout_points": 5, "stock_disponible": 3, "actif": "on"})
 
         self.assertTrue(HistoriqueAction.objects.filter(action="CREATION_FORMATION", entite_concernee="Formation").exists())
         self.assertTrue(HistoriqueAction.objects.filter(action="CREATION_PRODUIT", entite_concernee="Produit").exists())
@@ -1170,19 +1195,19 @@ class PlanningModuleUpgradeTests(TestCase):
     def test_planning_sidebar_ladder_and_child_tabs(self):
         self.client.login(username="planning-rh", password="rh123")
         for tab, label in [
-            ("overview", "Overview"),
-            ("calendar", "Calendar Schedule"),
-            ("daily", "Daily Planning"),
-            ("weekly", "Weekly Planning"),
-            ("biweekly", "Bi-weekly Planning"),
-            ("monthly", "Monthly Planning"),
-            ("timesheets", "Timesheets"),
-            ("shifts", "Shift Management"),
-            ("attendance", "Attendance"),
-            ("leave", "Leave / Time Off"),
-            ("tasks", "Project & Task Planning"),
-            ("reports", "Reports"),
-            ("settings", "Planning Settings"),
+            ("overview", "Apercu"),
+            ("calendar", "Calendrier planning"),
+            ("daily", "Planning journalier"),
+            ("weekly", "Planning hebdomadaire"),
+            ("biweekly", "Planning bihebdomadaire"),
+            ("monthly", "Planning mensuel"),
+            ("timesheets", "Feuilles de temps"),
+            ("shifts", "Gestion des shifts"),
+            ("attendance", "Presence"),
+            ("leave", "Conges valides"),
+            ("tasks", "Taches planifiees"),
+            ("reports", "Rapports"),
+            ("settings", "Parametres"),
         ]:
             response = self.client.get(reverse("planning"), {"tab": tab})
             self.assertEqual(response.status_code, 200)
@@ -1336,20 +1361,21 @@ class PlanningModuleUpgradeTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 400)
-        self.assertIn("Overnight shifts are not supported yet", json.dumps(response.json()))
+        self.assertIn("Les shifts de nuit ne sont pas encore pris en charge", json.dumps(response.json()))
 
     def test_planning_reports_approvals_and_detail_modal_states(self):
         self.client.login(username="planning-rh", password="rh123")
         reports = self.client.get(reverse("planning"), {"tab": "reports"})
-        self.assertContains(reports, "PDF export is not configured yet.")
-        self.assertContains(reports, "Shifts by employee")
+        self.assertContains(reports, "Rapports et exports")
+        self.assertContains(reports, reverse("planning_export", args=["pdf"]))
+        self.assertContains(reports, "Shifts par employe")
 
         approvals = self.client.get(reverse("planning"), {"tab": "approvals"})
-        self.assertContains(approvals, "No planning approvals are configured yet.")
+        self.assertContains(approvals, "Aucune validation planning")
 
         calendar = self.client.get(reverse("planning"), {"tab": "calendar"})
         self.assertContains(calendar, 'id="planningDetailModal"')
-        self.assertContains(calendar, "Color-coded planning agenda")
+        self.assertContains(calendar, "Agenda planning par couleur")
 
     def test_pointage_without_planned_shift_has_safe_warning_and_no_missing_hours(self):
         pointage = Pointage.objects.create(
@@ -1366,7 +1392,7 @@ class PlanningModuleUpgradeTests(TestCase):
         detail = pointage_breakdown(pointage)
 
         self.assertEqual(detail["missing_hours"], 0)
-        self.assertEqual(detail["warning"], "No planned shift found for this date.")
+        self.assertEqual(detail["warning"], "Aucun shift planifie pour cette date.")
 
     def test_pointage_checkout_uses_planning_shift_window(self):
         day = timezone.localdate()

@@ -1,6 +1,7 @@
 from django.contrib import admin
 
 from .models import (
+    ActualitePieceJointe,
     DemandeAdministrative,
     DemandeConge,
     Departement,
@@ -12,6 +13,7 @@ from .models import (
     Poste,
     Service,
     TacheEquipe,
+    TacheEquipeMessage,
 )
 
 
@@ -32,3 +34,5 @@ admin.site.register(Notification)
 admin.site.register(HistoriqueAction)
 admin.site.register(PlanningShift)
 admin.site.register(TacheEquipe)
+admin.site.register(TacheEquipeMessage)
+admin.site.register(ActualitePieceJointe)

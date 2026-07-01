@@ -59,7 +59,7 @@ class SecureChatbotTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["data"]["mode"], "refusal")
-        self.assertIn("payroll or salary", response.json()["data"]["answer"].lower())
+        self.assertIn("paie ou de salaire", response.json()["data"]["answer"].lower())
         self.assertNotIn("99999", response.content.decode())
 
     def test_manager_company_salary_request_is_refused(self):
@@ -68,7 +68,7 @@ class SecureChatbotTests(TestCase):
         self.assertEqual(response.status_code, 200)
         body = response.json()["data"]
         self.assertEqual(body["mode"], "refusal")
-        self.assertIn("payroll or salary", body["answer"].lower())
+        self.assertIn("paie ou de salaire", body["answer"].lower())
 
     def test_mutation_requests_are_refused_before_retrieval(self):
         prompts = [
@@ -85,7 +85,7 @@ class SecureChatbotTests(TestCase):
                 self.assertEqual(response.status_code, 200)
                 body = response.json()["data"]
                 self.assertEqual(body["mode"], "refusal")
-                self.assertIn("database modifications", body["answer"])
+                self.assertIn("modification directe", body["answer"])
 
     def test_prompt_injection_requests_are_refused_before_retrieval(self):
         prompts = [
@@ -100,7 +100,7 @@ class SecureChatbotTests(TestCase):
                 self.assertEqual(response.status_code, 200)
                 body = response.json()["data"]
                 self.assertEqual(body["mode"], "refusal")
-                self.assertIn("bypass permissions", body["answer"])
+                self.assertIn("contourner les permissions", body["answer"])
 
     def test_tab_guide_returns_requested_tab_only(self):
         response = self.ask("ai-emp", "What is Planning tab used for?")
@@ -149,4 +149,4 @@ class SecureChatbotTests(TestCase):
         response = self.ask("ai-emp", "x" * 1300)
 
         self.assertEqual(response.status_code, 400)
-        self.assertIn("too long", response.json()["message"].lower())
+        self.assertIn("trop long", response.json()["message"].lower())

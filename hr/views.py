@@ -1,3 +1,4 @@
+import csv
 import json
 from pathlib import Path
 
@@ -10,7 +11,7 @@ from django.db.models import Q
 from django.db.models import Avg, Count, Max, Min, Sum
 from django.db.models.functions import Concat
 from django.db.models import Value
-from django.http import FileResponse, HttpResponseForbidden, JsonResponse
+from django.http import FileResponse, HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -41,14 +42,17 @@ from .forms import (
     ReclamationRHForm,
     RemunerationForm,
     TacheEquipeForm,
+    TacheEquipeMessageForm,
     TraitementReclamationForm,
     PosteForm,
     ServiceForm,
 )
 from .models import (
     Actualite,
+    ActualitePieceJointe,
     AffectationFormation,
     AffectationMateriel,
+    CategorieProduit,
     CommandeProduit,
     ComptePoints,
     ConversationRH,
@@ -68,6 +72,7 @@ from .models import (
     Remuneration,
     SoldeConge,
     TacheEquipe,
+    TacheEquipeMessage,
     TransactionPoints,
     SupportRHReward,
     Pointage,
@@ -110,6 +115,7 @@ from .services import (
     pointer_entree,
     pointer_sortie,
     refuser_ou_annuler_commande,
+    shift_planifie_actuel,
 )
 
 
@@ -150,6 +156,15 @@ def attach_message_file(message, uploaded_file):
     message.piece_jointe = uploaded_file
     message.nom_piece_jointe = Path(uploaded_file.name).name[:255]
     return message
+
+
+def attach_task_file(obj, uploaded_file):
+    if not uploaded_file:
+        return obj
+    validate_uploaded_file(uploaded_file, DOCUMENT_EXTENSION_VALIDATOR)
+    obj.piece_jointe = uploaded_file
+    obj.nom_piece_jointe = Path(uploaded_file.name).name[:255]
+    return obj
 
 
 @login_required
@@ -469,7 +484,10 @@ def conges_list(request):
 
 @login_required
 def conge_create(request):
-    return render(request, "conges/form.html", {"page_title": "Nouvelle demande de conge", "form": DemandeCongeForm()})
+    user_profile = profile(request)
+    employee = user_profile.employe if user_profile else None
+    solde = SoldeConge.objects.get_or_create(employe=employee)[0] if employee else None
+    return render(request, "conges/form.html", {"page_title": "Nouvelle demande de conge", "form": DemandeCongeForm(employee=employee), "solde_conge": solde})
 
 
 @login_required
@@ -481,27 +499,33 @@ def conge_submit(request):
         return redirect("conges_list")
     form = DemandeCongeForm(request.POST, request.FILES, employee=user_profile.employe)
     if form.is_valid():
+        justificatif = request.FILES.get("justificatif")
+        if form.cleaned_data.get("type") in {TypeConge.MALADIE, TypeConge.MATERNITE} and not justificatif:
+            form.add_error(None, "Un justificatif est obligatoire pour un conge maladie ou maternite.")
+            solde = SoldeConge.objects.get_or_create(employe=user_profile.employe)[0]
+            return render(request, "conges/form.html", {"page_title": "Nouvelle demande de conge", "form": form, "solde_conge": solde})
         demande = form.save(commit=False)
         demande.employe = user_profile.employe
         demande.statut = StatutDemande.EN_ATTENTE
         demande.date_creation = timezone.now()
         demande.save()
-        justificatif = request.FILES.get("justificatif")
         if justificatif:
             try:
                 validate_uploaded_file(justificatif, DOCUMENT_EXTENSION_VALIDATOR)
             except ValidationError as exc:
                 form.add_error(None, exc)
                 demande.delete()
-                return render(request, "conges/form.html", {"page_title": "Nouvelle demande de conge", "form": form})
+                solde = SoldeConge.objects.get_or_create(employe=user_profile.employe)[0]
+                return render(request, "conges/form.html", {"page_title": "Nouvelle demande de conge", "form": form, "solde_conge": solde})
             create_document(request, justificatif, "Justificatif conge", user_profile.employe, None)
         if user_profile.employe.responsable:
             manager_profile = getattr(user_profile.employe.responsable, "utilisateur_profile", None)
             notify(manager_profile, f"Nouvelle demande de conge de {user_profile.employe.nom_complet}", "/conges")
         audit(request, "SOUMISSION_CONGE", f"Demande de conge soumise par {user_profile.employe.nom_complet}", "DemandeConge", demande.pk)
-        messages.success(request, "Demande de conge soumise avec succes.")
+        messages.success(request, "Demande de conge envoyee avec succes.")
         return redirect("conges_list")
-    return render(request, "conges/form.html", {"page_title": "Nouvelle demande de conge", "form": form})
+    solde = SoldeConge.objects.get_or_create(employe=user_profile.employe)[0]
+    return render(request, "conges/form.html", {"page_title": "Nouvelle demande de conge", "form": form, "solde_conge": solde})
 
 
 def can_process_conge(user_profile, demande):
@@ -951,6 +975,9 @@ def attendance_view(request):
         from .services import shift_permanent_for_day
 
         shift_today = shift_permanent_for_day(user_profile.employe, today)
+    personal_today = pointages.filter(employe=user_profile.employe, date=today).first()
+    active_shift_now = shift_planifie_actuel(user_profile.employe)
+    has_open_pointage = bool(personal_today and personal_today.heure_entree and not personal_today.heure_sortie)
     total_hours_today = sum(float(pointage.total_heures or 0) for pointage in today_pointages)
     planned_today = PlanningShift.objects.filter(Q(date_debut__date__lte=today, date_fin__date__gte=today) | Q(plan_type="permanent", date_debut__date__lte=today)).exclude(statut="annule")
     if user_profile.role not in {Role.ADMIN, Role.RESPONSABLE_RH}:
@@ -962,8 +989,10 @@ def attendance_view(request):
         {
             "page_title": "Presence / Pointage",
             "pointages": pointages[:80],
-            "today": pointages.filter(employe=user_profile.employe, date=today).first(),
+            "today": personal_today,
             "shift_today": shift_today,
+            "active_shift_now": active_shift_now,
+            "has_open_pointage": has_open_pointage,
             "today_pointages_count": today_pointages.count(),
             "today_retards_count": today_pointages.filter(statut="retard").count(),
             "today_open_count": today_pointages.filter(heure_sortie__isnull=True).count(),
@@ -980,7 +1009,7 @@ def attendance_view(request):
 def attendance_checkin(request):
     try:
         pointer_entree(profile(request).employe)
-        messages.success(request, "Entree pointee avec succes.")
+        messages.success(request, "Pointage d'entree enregistre.")
     except ValidationError as exc:
         messages.error(request, " ".join(exc.messages))
     return redirect("attendance")
@@ -991,7 +1020,7 @@ def attendance_checkin(request):
 def attendance_checkout(request):
     try:
         pointer_sortie(profile(request).employe)
-        messages.success(request, "Sortie pointee avec succes.")
+        messages.success(request, "Pointage de sortie enregistre.")
     except ValidationError as exc:
         messages.error(request, " ".join(exc.messages))
     return redirect("attendance")
@@ -1076,7 +1105,7 @@ def planning(request):
     if not active_tab:
         return redirect(f"{reverse('planning')}?tab=overview")
     if active_tab not in allowed_tabs:
-        messages.warning(request, "Section Planning introuvable. Retour a l'Overview.")
+        messages.warning(request, "Section Planning introuvable. Retour a l'apercu.")
         return redirect(f"{reverse('planning')}?tab=overview")
     if active_tab == "settings" and (not user_profile or user_profile.role not in {Role.ADMIN, Role.RESPONSABLE_RH}):
         messages.warning(request, "Vous n'avez pas acces aux parametres Planning.")
@@ -1165,7 +1194,8 @@ def planning(request):
     scoped_employees = accessible_employees(user_profile)
     scoped_employee_ids = scoped_employees.values_list("pk", flat=True)
     pointages = Pointage.objects.select_related("employe", "employe__departement").filter(date__gte=start_date, date__lte=end_date, employe_id__in=scoped_employee_ids)
-    leaves = DemandeConge.objects.select_related("employe").filter(date_debut__lte=end_date, date_fin__gte=start_date, employe_id__in=scoped_employee_ids)
+    all_leaves = DemandeConge.objects.select_related("employe").filter(date_debut__lte=end_date, date_fin__gte=start_date, employe_id__in=scoped_employee_ids)
+    leaves = all_leaves.filter(statut=StatutDemande.VALIDEE)
     tasks = tasks_for_profile(user_profile).filter(Q(date_limite__date__gte=start_date, date_limite__date__lte=end_date) | Q(shift__date_debut__date__gte=start_date, shift__date_debut__date__lte=end_date))
     attendance_summary = {
         "records": pointages.count(),
@@ -1176,8 +1206,8 @@ def planning(request):
         "hours": round(sum(float(pointage.total_heures or 0) for pointage in pointages), 2),
     }
     leave_summary = {
-        "approved": leaves.filter(statut=StatutDemande.VALIDEE).count(),
-        "pending": leaves.filter(statut=StatutDemande.EN_ATTENTE).count(),
+        "approved": leaves.count(),
+        "pending": all_leaves.filter(statut=StatutDemande.EN_ATTENTE).count(),
     }
     task_summary = {
         "planned": tasks.count(),
@@ -1266,31 +1296,62 @@ def planning_create(request):
     form = PlanningBulkForm(request.POST)
     if form.is_valid():
         cleaned = form.cleaned_data
-        payload = {
-            "scope": cleaned["scope"],
+        period_type = cleaned.get("period_type") or "single"
+        start_dt = cleaned["date_debut"]
+        end_dt = cleaned.get("date_fin")
+        duration = (end_dt - start_dt) if end_dt else None
+        days = [start_dt.date()]
+        if period_type == "weekly_unified":
+            first = start_dt.date() - timezone.timedelta(days=start_dt.weekday())
+            days = [first + timezone.timedelta(days=offset) for offset in range(5)]
+        elif period_type == "biweekly":
+            days = [start_dt.date() + timezone.timedelta(days=offset) for offset in range(14) if (start_dt.date() + timezone.timedelta(days=offset)).weekday() < 5]
+        elif period_type == "monthly":
+            first = start_dt.date().replace(day=1)
+            next_month = (first + timezone.timedelta(days=32)).replace(day=1)
+            cursor = first
+            days = []
+            while cursor < next_month:
+                if cursor.weekday() < 5:
+                    days.append(cursor)
+                cursor += timezone.timedelta(days=1)
+        base_payload = {
+            "scope": "company" if period_type == "weekly_unified" else cleaned["scope"],
             "title": cleaned["titre"],
             "department_id": cleaned["departement"].pk if cleaned.get("departement") else "",
             "service_id": cleaned["service"].pk if cleaned.get("service") else "",
             "employee_ids": [employee.pk for employee in cleaned.get("employes", [])],
             "location": cleaned["lieu"],
-            "starts_at": cleaned["date_debut"].isoformat(),
-            "ends_at": cleaned["date_fin"].isoformat() if cleaned.get("date_fin") else "",
             "plan_type": cleaned["plan_type"],
             "recurrence_rule": cleaned["recurrence_rule"],
             "permanent_end_time": cleaned["permanent_end_time"].isoformat() if cleaned.get("permanent_end_time") else "",
             "break_minutes": cleaned["pause_minutes"],
-            "break_starts_at": cleaned["pause_debut"].isoformat() if cleaned.get("pause_debut") else "",
             "status": cleaned["statut"],
             "notes": cleaned["notes"],
         }
         try:
-            result = bulk_create_shifts(profile(request), payload)
+            created_rows = []
+            skipped = []
+            for day in days:
+                starts_at = timezone.make_aware(timezone.datetime.combine(day, start_dt.time()))
+                ends_at = starts_at + duration if duration else None
+                break_starts_at = ""
+                if cleaned.get("pause_debut"):
+                    break_starts_at = timezone.make_aware(timezone.datetime.combine(day, cleaned["pause_debut"].time())).isoformat()
+                payload = {
+                    **base_payload,
+                    "starts_at": starts_at.isoformat(),
+                    "ends_at": ends_at.isoformat() if ends_at else "",
+                    "break_starts_at": break_starts_at,
+                }
+                result = bulk_create_shifts(profile(request), payload)
+                created_rows.extend(result["created"])
+                skipped.extend(result["skipped"])
         except (PermissionDenied, ValidationError) as exc:
             messages.error(request, str(exc))
             return redirect("planning")
-        created = len(result["created"])
-        skipped = result["skipped"]
-        audit(request, "CREATION_PLANNING_GROUPE", f"{created} shift(s) crees via {cleaned['scope']}", "PlanningShift", None)
+        created = len(created_rows)
+        audit(request, "CREATION_PLANNING_GROUPE", f"{created} shift(s) crees via {base_payload['scope']}", "PlanningShift", None)
         if created:
             messages.success(request, f"{created} shift(s) ajoute(s) au planning.")
         if skipped:
@@ -1345,6 +1406,80 @@ def filtered_planning_queryset(request):
     if search:
         shifts = shifts.filter(Q(titre__icontains=search) | Q(lieu__icontains=search) | Q(employe__nom__icontains=search) | Q(employe__prenom__icontains=search))
     return shifts.order_by("date_debut", "employe__nom")
+
+
+def planning_export_rows(request):
+    rows = []
+    for shift in filtered_planning_queryset(request)[:1000]:
+        rows.append(
+            [
+                shift.titre,
+                shift.employe.nom_complet if shift.employe else "Shift ouvert",
+                shift.departement.libelle if shift.departement else "",
+                shift.service.libelle if shift.service else "",
+                timezone.localtime(shift.date_debut).strftime("%d/%m/%Y %H:%M"),
+                timezone.localtime(shift.date_fin).strftime("%d/%m/%Y %H:%M") if shift.date_fin else "",
+                shift.get_statut_display(),
+                shift.get_plan_type_display(),
+                shift.duree_heures,
+            ]
+        )
+    return rows
+
+
+def minimal_pdf_bytes(title, headers, rows):
+    def esc(value):
+        return str(value).replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+
+    lines = [title, timezone.now().strftime("Genere le %d/%m/%Y %H:%M"), " | ".join(headers)]
+    lines.extend(" | ".join(esc(item) for item in row) for row in rows[:35])
+    stream_lines = ["BT", "/F1 10 Tf", "40 800 Td", "14 TL"]
+    for line in lines:
+        stream_lines.append(f"({esc(line)[:140]}) Tj")
+        stream_lines.append("T*")
+    stream_lines.append("ET")
+    stream = "\n".join(stream_lines).encode("latin-1", errors="replace")
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+        b"<< /Length " + str(len(stream)).encode("ascii") + b" >>\nstream\n" + stream + b"\nendstream",
+    ]
+    pdf = [b"%PDF-1.4\n"]
+    offsets = [0]
+    for index, obj in enumerate(objects, start=1):
+        offsets.append(sum(len(part) for part in pdf))
+        pdf.append(f"{index} 0 obj\n".encode("ascii") + obj + b"\nendobj\n")
+    xref_offset = sum(len(part) for part in pdf)
+    pdf.append(f"xref\n0 {len(objects) + 1}\n0000000000 65535 f \n".encode("ascii"))
+    for offset in offsets[1:]:
+        pdf.append(f"{offset:010d} 00000 n \n".encode("ascii"))
+    pdf.append(f"trailer << /Root 1 0 R /Size {len(objects) + 1} >>\nstartxref\n{xref_offset}\n%%EOF".encode("ascii"))
+    return b"".join(pdf)
+
+
+@login_required
+def planning_export(request, file_format):
+    file_format = (file_format or "").lower()
+    if file_format not in {"csv", "excel", "pdf"}:
+        messages.error(request, "Format d'export planning invalide.")
+        return redirect(f"{reverse('planning')}?tab=reports")
+    headers = ["Shift", "Employe", "Departement", "Service", "Debut", "Fin", "Statut", "Type", "Heures"]
+    rows = planning_export_rows(request)
+    filename = f"planning-{timezone.localdate().isoformat()}"
+    if file_format == "pdf":
+        response = HttpResponse(minimal_pdf_bytes("Rapport planning", headers, rows), content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}.pdf"'
+        return response
+    response = HttpResponse(content_type="text/csv; charset=utf-8" if file_format == "csv" else "application/vnd.ms-excel; charset=utf-8")
+    extension = "csv" if file_format == "csv" else "xls"
+    response["Content-Disposition"] = f'attachment; filename="{filename}.{extension}"'
+    response.write("\ufeff")
+    writer = csv.writer(response)
+    writer.writerow(headers)
+    writer.writerows(rows)
+    return response
 
 
 @login_required
@@ -1559,11 +1694,11 @@ def team_tasks(request):
         return redirect(f"{reverse('team_tasks')}?tab=overview")
     active_tab = requested_tab
     if active_tab not in allowed_tabs:
-        messages.warning(request, "Section Task Keep introuvable. Retour a l'Overview.")
+        messages.warning(request, "Section Taches equipe introuvable. Retour a l'apercu.")
         return redirect(f"{reverse('team_tasks')}?tab=overview")
     manager_tabs = {"create", "team", "approval", "points"}
     if active_tab in manager_tabs and not can_manage:
-        messages.warning(request, "Vous n'avez pas acces a cette section Task Keep.")
+        messages.warning(request, "Vous n'avez pas acces a cette section Taches equipe.")
         active_tab = "overview"
     statut = request.GET.get("statut", "").strip()
     if statut:
@@ -1609,13 +1744,14 @@ def team_tasks(request):
 @require_POST
 def task_create(request):
     user_profile = profile(request)
-    form = TacheEquipeForm(request.POST, user_profile=user_profile)
+    form = TacheEquipeForm(request.POST, request.FILES, user_profile=user_profile)
     if form.is_valid():
         task = form.save(commit=False)
         task.cree_par = user_profile
         if user_profile and user_profile.employe:
             task.manager = user_profile.employe
         try:
+            attach_task_file(task, request.FILES.get("piece_jointe"))
             eligible = managed_task_employees(user_profile, task.departement, task.service)
             if task.mode_affectation in {"team", "open"} and not eligible.exists():
                 raise ValidationError("Aucun employe eligible dans ce perimetre.")
@@ -1631,16 +1767,17 @@ def task_create(request):
                         manager=task.manager,
                         departement=employee.departement or task.departement,
                         service=employee.service or task.service,
-                        shift=task.shift,
                         priorite=task.priorite,
                         mode_affectation="direct",
+                        obligatoire=task.obligatoire,
                         taille=task.taille,
                         statut="a_faire",
                         date_debut=task.date_debut,
                         date_fin=task.date_fin,
                         date_limite=task.date_limite,
-                        auto_assign_at=task.auto_assign_at,
-                        max_acceptations=task.max_acceptations,
+                        max_acceptations=1,
+                        piece_jointe=task.piece_jointe,
+                        nom_piece_jointe=task.nom_piece_jointe,
                         cree_par=user_profile,
                     )
                     clone.points_suggeres = suggested_task_points(clone)
@@ -1678,6 +1815,52 @@ def task_create(request):
             errors.extend(field_errors)
         messages.error(request, " ".join(errors) or "Tache invalide.")
     return redirect(f"{reverse('team_tasks')}?tab=create")
+
+
+@login_required
+def task_detail(request, pk):
+    user_profile = profile(request)
+    task = get_object_or_404(tasks_for_profile(user_profile).prefetch_related("messages"), pk=pk)
+    can_manage = user_profile and can_manage_task(user_profile, task)
+    can_reply = bool(user_profile and user_profile.employe)
+    if request.method == "POST":
+        form = TacheEquipeMessageForm(request.POST, request.FILES)
+        if not can_reply:
+            messages.error(request, "Vous n'etes pas autorise a repondre a cette tache.")
+            return redirect("task_detail", pk=task.pk)
+        if form.is_valid():
+            try:
+                message = form.save(commit=False)
+                message.tache = task
+                message.auteur = user_profile
+                attach_task_file(message, request.FILES.get("piece_jointe"))
+                message.full_clean()
+                message.save()
+                audit(request, "MESSAGE_TACHE", f"Reponse sur la tache: {task.titre}", "TacheEquipe", task.pk)
+                if can_manage and task.assignee:
+                    notify_employee(task.assignee, f"Nouveau message sur la tache: {task.titre}", reverse("task_detail", args=[task.pk]))
+                elif task.manager:
+                    notify_employee(task.manager, f"Nouveau message sur la tache: {task.titre}", reverse("task_detail", args=[task.pk]))
+                messages.success(request, "Reponse ajoutee.")
+                return redirect("task_detail", pk=task.pk)
+            except ValidationError as exc:
+                messages.error(request, " ".join(exc.messages))
+        else:
+            messages.error(request, "Message invalide: ajoutez un texte ou une piece jointe valide.")
+    else:
+        form = TacheEquipeMessageForm()
+    return render(
+        request,
+        "taches/detail.html",
+        {
+            "page_title": f"Tache - {task.titre}",
+            "task": task,
+            "messages_tache": task.messages.select_related("auteur", "auteur__employe"),
+            "message_form": form,
+            "can_manage_task": can_manage,
+            "can_reply": can_reply,
+        },
+    )
 
 
 @login_required
@@ -1730,7 +1913,10 @@ def task_status(request, pk):
                     raise PermissionDenied("Seul un manager peut approuver une tache.")
                 if task.statut != "soumise":
                     raise ValidationError("Seules les taches soumises peuvent etre approuvees.")
-                points = int(request.POST.get("points") or 0)
+                try:
+                    points = int(request.POST.get("points") or 0)
+                except (TypeError, ValueError) as exc:
+                    raise ValidationError("Les points doivent etre un nombre valide.") from exc
                 if points < 0 or points > TASK_POINT_MAX:
                     raise ValidationError(f"Les points doivent etre entre 0 et {TASK_POINT_MAX}.")
                 remaining = MANAGER_MONTHLY_TASK_POINTS - task_points_used(user_profile)
@@ -2367,10 +2553,20 @@ def salary_edit(request, pk):
 @login_required
 def news_list(request):
     user_profile = profile(request)
-    news = Actualite.objects.filter(statut="publiee")
+    news = Actualite.objects.filter(statut="publiee").order_by("-date_publication", "-id")
     if user_profile.role in {Role.ADMIN, Role.RESPONSABLE_RH}:
-        news = Actualite.objects.all()
+        news = Actualite.objects.filter(statut="publiee").order_by("-date_publication", "-id")
     return render(request, "actualites/list.html", {"page_title": "Actualites / Newsletter", "actualites": news, "form": ActualiteForm() if user_profile.role in {Role.ADMIN, Role.RESPONSABLE_RH} else None})
+
+
+@login_required
+def news_detail(request, pk):
+    user_profile = profile(request)
+    qs = Actualite.objects.prefetch_related("pieces_jointes").filter(statut="publiee")
+    if user_profile.role in {Role.ADMIN, Role.RESPONSABLE_RH}:
+        qs = Actualite.objects.prefetch_related("pieces_jointes").filter(statut="publiee")
+    news = get_object_or_404(qs, pk=pk)
+    return render(request, "actualites/detail.html", {"page_title": news.titre, "actualite": news})
 
 
 @role_required(Role.ADMIN, Role.RESPONSABLE_RH)
@@ -2378,16 +2574,26 @@ def news_list(request):
 def news_create(request):
     form = ActualiteForm(request.POST, request.FILES)
     if form.is_valid():
-        news = form.save(commit=False)
-        news.auteur = profile(request)
-        if news.statut == "publiee" and not news.date_publication:
+        try:
+            image = request.FILES.get("image")
+            if image:
+                validate_uploaded_file(image, PHOTO_EXTENSION_VALIDATOR)
+            for uploaded in request.FILES.getlist("pieces_jointes"):
+                validate_uploaded_file(uploaded, DOCUMENT_EXTENSION_VALIDATOR)
+            news = form.save(commit=False)
+            news.auteur = profile(request)
+            news.statut = "publiee"
             news.date_publication = timezone.now()
-        news.full_clean()
-        news.save()
-        audit(request, "PUBLICATION_ACTUALITE", news.titre, "Actualite", news.pk)
-        messages.success(request, "Actualite enregistree.")
+            news.full_clean()
+            news.save()
+            for uploaded in request.FILES.getlist("pieces_jointes"):
+                ActualitePieceJointe.objects.create(actualite=news, fichier=uploaded, nom_fichier=Path(uploaded.name).name[:255])
+            audit(request, "PUBLICATION_ACTUALITE", news.titre, "Actualite", news.pk)
+            messages.success(request, "Actualite publiee.")
+        except ValidationError as exc:
+            messages.error(request, " ".join(exc.messages))
     else:
-        messages.error(request, "Actualite invalide.")
+        messages.error(request, "Actualite invalide: titre, contenu et fichier doivent etre valides.")
     return redirect("news_list")
 
 
@@ -2415,7 +2621,26 @@ def shop(request):
     is_rh = user_profile.role in {Role.ADMIN, Role.RESPONSABLE_RH}
     materiels = AffectationMateriel.objects.select_related("employe", "produit") if is_rh else AffectationMateriel.objects.filter(employe=employe).select_related("produit")
     transactions = TransactionPoints.objects.filter(employe=employe, source="boutique")[:50]
-    return render(request, "boutique/index.html", {"page_title": "Boutique employe / Materiel", "produits": Produit.objects.filter(actif=True), "form": form, "commandes": commandes, "compte": ComptePoints.objects.get_or_create(employe=employe)[0], "produit_form": ProduitForm() if is_rh else None, "materiels": materiels[:80], "transactions_boutique": transactions, "is_rh": is_rh})
+    active_order_statuses = ["en_attente", "approuvee"]
+    return render(
+        request,
+        "boutique/index.html",
+        {
+            "page_title": "Boutique employe / Materiel",
+            "produits": Produit.objects.filter(actif=True).select_related("categorie"),
+            "produits_stock": Produit.objects.select_related("categorie").order_by("-actif", "nom") if is_rh else Produit.objects.none(),
+            "categories": CategorieProduit.objects.order_by("nom") if is_rh else CategorieProduit.objects.none(),
+            "form": form,
+            "commandes": commandes,
+            "commandes_a_traiter": commandes.filter(statut__in=active_order_statuses) if is_rh else commandes,
+            "commandes_historique": commandes.exclude(statut__in=active_order_statuses) if is_rh else commandes.exclude(statut="en_attente"),
+            "compte": ComptePoints.objects.get_or_create(employe=employe)[0],
+            "produit_form": ProduitForm() if is_rh else None,
+            "materiels": materiels[:80],
+            "transactions_boutique": transactions,
+            "is_rh": is_rh,
+        },
+    )
 
 
 @role_required(Role.ADMIN, Role.RESPONSABLE_RH)
@@ -2430,6 +2655,33 @@ def product_create(request):
         messages.success(request, "Produit enregistre.")
     else:
         messages.error(request, "Produit invalide.")
+    return redirect("shop")
+
+
+@role_required(Role.ADMIN, Role.RESPONSABLE_RH)
+@require_POST
+def product_update(request, pk):
+    produit = get_object_or_404(Produit, pk=pk)
+    form = ProduitForm(request.POST, request.FILES, instance=produit)
+    if form.is_valid():
+        produit = form.save(commit=False)
+        produit.full_clean()
+        produit.save()
+        audit(request, "MODIFICATION_PRODUIT", f"Produit modifie: {produit.nom}", "Produit", produit.pk)
+        messages.success(request, "Produit mis a jour.")
+    else:
+        messages.error(request, "Produit invalide: verifiez la categorie, la description, le stock et les points.")
+    return redirect("shop")
+
+
+@role_required(Role.ADMIN, Role.RESPONSABLE_RH)
+@require_POST
+def product_delete(request, pk):
+    produit = get_object_or_404(Produit, pk=pk)
+    produit.actif = False
+    produit.save(update_fields=["actif"])
+    audit(request, "SUPPRESSION_PRODUIT", f"Produit retire du catalogue: {produit.nom}", "Produit", produit.pk)
+    messages.success(request, "Produit retire du catalogue.")
     return redirect("shop")
 
 
@@ -2519,7 +2771,8 @@ def manual_points(request):
                 return redirect("manual_points")
             type_tx = "gain" if adj.type_adjustement in {"ajout", "remboursement"} else "deduction"
             try:
-                appliquer_transaction_points(adj.employe, type_tx, adj.nombre_points, "manuel", adj.motif_obligatoire, profile(request))
+                objet_lie = f"ConversationRH:{adj.ticket_lie_id}" if adj.ticket_lie_id else ""
+                appliquer_transaction_points(adj.employe, type_tx, adj.nombre_points, "ticket" if adj.ticket_lie_id else "manuel", adj.motif_obligatoire, profile(request), objet_lie)
                 adj.save()
                 notify_employee(adj.employe, "Votre solde de points a ete ajuste par les RH.", "/pointage")
                 messages.success(request, "Ajustement enregistre.")

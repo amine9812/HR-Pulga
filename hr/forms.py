@@ -25,6 +25,7 @@ from .models import (
     SoldeConge,
     StatutDemande,
     TacheEquipe,
+    TacheEquipeMessage,
     TypeConge,
 )
 
@@ -232,8 +233,11 @@ class DemandeCongeForm(BootstrapModelForm):
         if self.employee and debut and fin:
             jours = (fin - debut).days + 1
             solde = getattr(self.employee, "solde_conge", None)
-            if cleaned.get("type") != TypeConge.SANS_SOLDE and solde and jours > solde.jours_disponibles:
-                self.add_error("date_fin", "La duree demandee depasse votre solde de conges disponible.")
+            if cleaned.get("type") == TypeConge.ANNUEL and solde:
+                if solde.jours_disponibles <= 0:
+                    self.add_error("date_fin", "Votre solde de conge annuel est epuise.")
+                elif jours > solde.jours_disponibles:
+                    self.add_error("date_fin", "Solde de conge annuel insuffisant.")
             overlapping = DemandeConge.objects.filter(
                 employe=self.employee,
                 date_debut__lte=fin,
@@ -428,10 +432,9 @@ class ConversationRHRatingForm(forms.Form):
 class ActualiteForm(BootstrapModelForm):
     class Meta:
         model = Actualite
-        fields = ["titre", "contenu", "audience", "departement", "role_cible", "statut", "date_publication", "date_evenement", "image"]
+        fields = ["titre", "contenu", "audience", "departement", "role_cible", "date_evenement", "image"]
         widgets = {
             "contenu": forms.Textarea(attrs={"rows": 5}),
-            "date_publication": forms.DateTimeInput(attrs={"type": "datetime-local"}),
             "date_evenement": forms.DateInput(attrs={"type": "date"}),
         }
 
@@ -478,16 +481,29 @@ class ProduitForm(BootstrapModelForm):
             raise ValidationError("Le nom du produit doit contenir au moins 2 caracteres.")
         return value
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["categorie"].required = True
+        self.fields["description"].required = True
+
+    def clean_description(self):
+        value = (self.cleaned_data.get("description") or "").strip()
+        if not value:
+            raise ValidationError("La description du produit est obligatoire.")
+        return value
+
 
 class AjustementPointsManuelForm(BootstrapModelForm):
     class Meta:
         model = AjustementPointsManuel
-        fields = ["employe", "type_adjustement", "nombre_points", "motif_obligatoire", "reclamation_liee"]
+        fields = ["employe", "type_adjustement", "nombre_points", "motif_obligatoire", "ticket_lie"]
         widgets = {"motif_obligatoire": forms.Textarea(attrs={"rows": 3})}
+        labels = {"ticket_lie": "Ticket support lie", "motif_obligatoire": "Motif obligatoire"}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["reclamation_liee"].required = False
+        self.fields["ticket_lie"].required = False
+        self.fields["ticket_lie"].queryset = ConversationRH.objects.select_related("employe").order_by("-date_creation")
 
 
 class ReclamationRHForm(BootstrapModelForm):
@@ -592,7 +608,14 @@ class PlanningBulkForm(forms.Form):
         ("company", "Toute l'entreprise"),
         ("employees", "Selection d'employes"),
     ]
+    PERIOD_CHOICES = [
+        ("single", "Shift ponctuel"),
+        ("weekly_unified", "Planning hebdomadaire unifie pour tout le monde"),
+        ("biweekly", "Planning bihebdomadaire"),
+        ("monthly", "Planning mensuel"),
+    ]
     scope = forms.ChoiceField(choices=SCOPE_CHOICES, label="Cible")
+    period_type = forms.ChoiceField(choices=PERIOD_CHOICES, initial="single", label="Type de planning")
     titre = forms.CharField(max_length=160, initial="Shift", label="Nom du shift")
     departement = forms.ModelChoiceField(queryset=Departement.objects.all(), required=False, label="Departement")
     service = forms.ModelChoiceField(queryset=Service.objects.select_related("departement"), required=False, label="Service")
@@ -623,6 +646,7 @@ class PlanningBulkForm(forms.Form):
     def clean(self):
         cleaned = super().clean()
         scope = cleaned.get("scope")
+        period_type = cleaned.get("period_type")
         date_debut = cleaned.get("date_debut")
         date_fin = cleaned.get("date_fin")
         plan_type = cleaned.get("plan_type") or "normal"
@@ -638,7 +662,7 @@ class PlanningBulkForm(forms.Form):
         if plan_type == "normal" and recurrence_rule != "none":
             self.add_error("recurrence_rule", "La recurrence est disponible pour les plans permanents. Creez des shifts normaux separes pour une recurrence operationnelle.")
         if date_debut and date_fin and date_fin <= date_debut:
-            self.add_error("date_fin", "Overnight shifts are not supported yet. Please create two separate shifts or choose a valid same-day time range.")
+            self.add_error("date_fin", "Les shifts de nuit ne sont pas encore pris en charge. Creez deux shifts separes ou choisissez une plage horaire valide.")
         if date_debut and date_fin and pause_minutes:
             duration_minutes = (date_fin - date_debut).total_seconds() / 60
             if pause_minutes >= duration_minutes:
@@ -655,13 +679,19 @@ class PlanningBulkForm(forms.Form):
             self.add_error("departement", "Choisissez un departement.")
         if scope == "employees" and not cleaned.get("employes"):
             self.add_error("employes", "Choisissez au moins un employe.")
+        if period_type == "weekly_unified":
+            cleaned["scope"] = "company"
+        if period_type != "single" and plan_type != "normal":
+            self.add_error("plan_type", "Les plannings hebdomadaires, bihebdomadaires et mensuels generent des shifts normaux.")
         return cleaned
 
 
 class TacheEquipeForm(BootstrapModelForm):
+    piece_jointe = forms.FileField(required=False, label="Piece jointe")
+
     class Meta:
         model = TacheEquipe
-        fields = ["titre", "description", "mode_affectation", "employe", "departement", "service", "shift", "priorite", "taille", "date_debut", "date_fin", "date_limite", "auto_assign_at", "max_acceptations"]
+        fields = ["titre", "description", "mode_affectation", "obligatoire", "employe", "departement", "service", "priorite", "taille", "date_debut", "date_fin", "date_limite", "auto_assign_at", "max_acceptations", "piece_jointe"]
         widgets = {
             "description": forms.Textarea(attrs={"rows": 3}),
             "date_debut": forms.DateTimeInput(attrs={"type": "datetime-local"}),
@@ -676,7 +706,20 @@ class TacheEquipeForm(BootstrapModelForm):
         self.fields["employe"].required = False
         self.fields["departement"].required = False
         self.fields["service"].required = False
-        self.fields["shift"].required = False
+        self.fields["date_debut"].required = True
+        self.fields["date_fin"].required = True
+        self.fields["date_limite"].required = False
+        self.fields["auto_assign_at"].required = False
+        self.fields["max_acceptations"].required = False
+        self.fields["titre"].label = "Titre"
+        self.fields["description"].label = "Description detaillee"
+        self.fields["mode_affectation"].label = "Mode d'affectation"
+        self.fields["obligatoire"].label = "Obligatoire"
+        self.fields["date_debut"].label = "Date de debut"
+        self.fields["date_fin"].label = "Date de fin"
+        self.fields["date_limite"].label = "Deadline"
+        self.fields["auto_assign_at"].label = "Attribution automatique"
+        self.fields["max_acceptations"].label = "Nombre maximal d'acceptations"
         if user_profile and user_profile.role == "RESPONSABLE_HIERARCHIQUE" and user_profile.employe:
             scoped = Employe.objects.filter(actif=True, responsable=user_profile.employe)
             self.fields["employe"].queryset = scoped.select_related("departement", "service")
@@ -686,7 +729,6 @@ class TacheEquipeForm(BootstrapModelForm):
             self.fields["employe"].queryset = Employe.objects.filter(actif=True).select_related("departement", "service")
             self.fields["departement"].queryset = Departement.objects.all()
             self.fields["service"].queryset = Service.objects.select_related("departement")
-        self.fields["shift"].queryset = PlanningShift.objects.exclude(statut__in=["annule", "termine"])
 
     def clean_titre(self):
         value = (self.cleaned_data.get("titre") or "").strip()
@@ -710,12 +752,24 @@ class TacheEquipeForm(BootstrapModelForm):
         fin = cleaned.get("date_fin")
         deadline = cleaned.get("date_limite")
         auto_at = cleaned.get("auto_assign_at")
+        if not debut:
+            self.add_error("date_debut", "La date de debut est obligatoire.")
+        if not fin:
+            self.add_error("date_fin", "La date de fin est obligatoire.")
         if debut and fin and fin < debut:
             self.add_error("date_fin", "La date de fin doit etre apres le debut.")
+        if not deadline and fin:
+            cleaned["date_limite"] = fin
+            deadline = fin
         if deadline and debut and deadline < debut:
             self.add_error("date_limite", "La deadline ne peut pas etre avant le debut.")
+        if deadline and fin and deadline > fin:
+            self.add_error("date_limite", "La deadline ne peut pas etre apres la date de fin.")
         if auto_at and deadline and auto_at > deadline:
             self.add_error("auto_assign_at", "L'auto-affectation doit intervenir avant la deadline.")
+        if mode != "open":
+            cleaned["auto_assign_at"] = None
+            cleaned["max_acceptations"] = 1
         if mode == "direct" and not employe:
             self.add_error("employe", "Choisissez un employe pour une affectation directe.")
         if mode == "open" and employe:
@@ -730,4 +784,25 @@ class TacheEquipeForm(BootstrapModelForm):
                 self.add_error("departement", "Ce departement n'appartient pas a votre perimetre.")
             if service and not scoped.filter(service=service).exists():
                 self.add_error("service", "Ce service n'appartient pas a votre perimetre.")
+        return cleaned
+
+
+class TacheEquipeMessageForm(forms.ModelForm):
+    piece_jointe = forms.FileField(required=False, label="Joindre un fichier")
+
+    class Meta:
+        model = TacheEquipeMessage
+        fields = ["contenu", "piece_jointe"]
+        widgets = {"contenu": forms.Textarea(attrs={"rows": 3, "placeholder": "Ecrire une reponse..."})}
+        labels = {"contenu": "Reponse"}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs.setdefault("class", "form-control")
+
+    def clean(self):
+        cleaned = super().clean()
+        if not (cleaned.get("contenu") or "").strip() and not cleaned.get("piece_jointe"):
+            raise ValidationError("Ajoutez un message ou une piece jointe.")
         return cleaned

@@ -85,8 +85,10 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
-# Enable Whitenoise compression and caching
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+# Default to compressed non-manifest storage so local tests and uncollected
+# deployments do not fail with missing manifest entries. Production can still
+# opt into manifest hashing through STATICFILES_STORAGE.
+STATICFILES_STORAGE = os.environ.get("STATICFILES_STORAGE", "whitenoise.storage.CompressedStaticFilesStorage")
 
 # Media Storage Configuration
 if os.environ.get("AWS_ACCESS_KEY_ID"):
@@ -180,4 +182,3 @@ if not DEBUG:
     SECURE_CONTENT_TYPE_NOSNIFF = True
     # Railway provides HTTPS, so we trust the X-Forwarded-Proto header
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-
