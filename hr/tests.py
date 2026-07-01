@@ -42,7 +42,7 @@ from hr.models import (
     TransactionPoints,
     TypeConge,
 )
-from hr.services import appliquer_transaction_points, approuver_commande, deduire_solde_conge, livrer_commande, pointer_sortie, refuser_ou_annuler_commande
+from hr.services import appliquer_transaction_points, approuver_commande, deduire_solde_conge, livrer_commande, pointer_entree, pointer_sortie, refuser_ou_annuler_commande
 
 
 class HrSmokeTests(TestCase):
@@ -1393,6 +1393,51 @@ class PlanningModuleUpgradeTests(TestCase):
 
         self.assertEqual(detail["missing_hours"], 0)
         self.assertEqual(detail["warning"], "Aucun shift planifie pour cette date.")
+
+    def test_attendance_page_allows_checkin_without_active_shift(self):
+        self.client.login(username="planning-emp", password="emp123")
+
+        response = self.client.get(reverse("attendance"))
+
+        self.assertContains(response, "Pointer l'entree")
+        self.assertNotContains(response, "Aucun shift actif")
+
+    def test_checkin_and_checkout_are_allowed_without_shift_or_minimum_hours(self):
+        now = timezone.now().replace(microsecond=0)
+
+        with patch("hr.services.timezone.now", return_value=now):
+            pointage = pointer_entree(self.emp)
+
+        self.assertIsNone(pointage.shift)
+        self.assertEqual(pointage.statut, "incomplet")
+
+        with patch("hr.services.timezone.now", return_value=now + timedelta(minutes=1)):
+            pointage = pointer_sortie(self.emp)
+
+        self.assertIsNone(pointage.shift)
+        self.assertEqual(pointage.statut, "present")
+        self.assertEqual(str(pointage.total_heures), "0.02")
+        self.assertIn("Pointage libre", pointage.commentaire)
+
+    def test_checkin_can_link_today_shift_even_outside_current_window(self):
+        day = timezone.localdate()
+        shift_start = timezone.make_aware(timezone.datetime.combine(day, time(15, 0)))
+        shift_end = timezone.make_aware(timezone.datetime.combine(day, time(18, 0)))
+        shift = PlanningShift.objects.create(
+            titre="Apres-midi support",
+            employe=self.emp,
+            departement=self.dep,
+            service=self.service,
+            date_debut=shift_start,
+            date_fin=shift_end,
+            statut="publie",
+        )
+        checkin_time = timezone.make_aware(timezone.datetime.combine(day, time(9, 0)))
+
+        with patch("hr.services.timezone.now", return_value=checkin_time):
+            pointage = pointer_entree(self.emp)
+
+        self.assertEqual(pointage.shift, shift)
 
     def test_pointage_checkout_uses_planning_shift_window(self):
         day = timezone.localdate()

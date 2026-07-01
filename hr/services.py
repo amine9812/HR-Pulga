@@ -1,3 +1,5 @@
+from decimal import Decimal, ROUND_HALF_UP
+
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -137,6 +139,23 @@ def shift_planifie_actuel(employe, now=None):
     return None
 
 
+def shift_planifie_pour_jour(employe, day):
+    if not employe:
+        return None
+    shift = (
+        PlanningShift.objects.filter(
+            employe=employe,
+            statut="publie",
+            plan_type="normal",
+            date_debut__date__lte=day,
+            date_fin__date__gte=day,
+        )
+        .order_by("date_debut")
+        .first()
+    )
+    return shift or shift_permanent_for_day(employe, day)
+
+
 def planned_window_for_shift(shift, day):
     local_shift_start = timezone.localtime(shift.date_debut)
     start = timezone.make_aware(timezone.datetime.combine(day, local_shift_start.time()))
@@ -187,6 +206,11 @@ def planned_window_for_pointage(pointage, param):
     return start, end
 
 
+def decimal_hours_between(start, end):
+    seconds = Decimal(str((end - start).total_seconds()))
+    return (seconds / Decimal("3600")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
 @transaction.atomic
 def pointer_entree(employe):
     # TRAITEMENT POINTAGE — empeche un double pointage d'entree dans la meme journee.
@@ -196,14 +220,17 @@ def pointer_entree(employe):
         raise ValidationError("Un pointage ouvert existe deja aujourd'hui.")
     if Pointage.objects.filter(employe=employe, date=today).exists():
         raise ValidationError("Vous avez deja pointe aujourd'hui.")
-    shift = shift_planifie_actuel(employe, now)
-    if not shift:
-        raise ValidationError("Aucun shift planifie pour cette periode.")
+    shift = shift_planifie_actuel(employe, now) or shift_planifie_pour_jour(employe, today)
     param = parametre_pointage_actif()
-    planned_start, _ = planned_window_for_shift(shift, today)
-    start_limit = planned_start + timezone.timedelta(minutes=param.tolerance_retard_minutes)
-    statut = "retard" if now > start_limit else "incomplet"
-    commentaire = "Retard detecte." if statut == "retard" else ""
+    statut = "incomplet"
+    commentaire = ""
+    if shift:
+        planned_start, _ = planned_window_for_shift(shift, today)
+        start_limit = planned_start + timezone.timedelta(minutes=param.tolerance_retard_minutes)
+        statut = "retard" if now > start_limit else "incomplet"
+        commentaire = "Retard detecte." if statut == "retard" else ""
+    else:
+        commentaire = "Pointage libre: aucun shift planifie associe."
     pointage = Pointage(employe=employe, shift=shift, date=today, heure_entree=now, statut=statut, commentaire=commentaire)
     pointage.full_clean()
     pointage.save()
@@ -221,31 +248,34 @@ def pointer_sortie(employe):
         raise ValidationError("La sortie ne peut pas etre avant l'entree.")
     param = parametre_pointage_actif()
     pointage.heure_sortie = now
-    seconds = (pointage.heure_sortie - pointage.heure_entree).total_seconds()
-    pointage.total_heures = round(seconds / 3600, 2)
-    planned_start, planned_end = planned_window_for_pointage(pointage, param)
-    start_limit = planned_start + timezone.timedelta(minutes=param.tolerance_retard_minutes)
-    expected_hours = max(0, (planned_end - planned_start).total_seconds() / 3600 - ((pointage.shift.pause_minutes if pointage.shift else 0) / 60))
+    pointage.total_heures = decimal_hours_between(pointage.heure_entree, pointage.heure_sortie)
     points = param.points_presence_normale
-    statut = "present"
-    if pointage.heure_entree > start_limit:
-        points -= param.penalite_retard
-        statut = "retard"
-    if pointage.heure_sortie < planned_end:
-        points -= param.penalite_sortie_anticipee
-        statut = "sortie_anticipee" if statut == "present" else statut
-    elif pointage.total_heures > expected_hours:
-        points += param.bonus_heures_supplementaires
-    missing_hours = max(0, round(expected_hours - float(pointage.total_heures or 0), 2))
-    late_minutes = max(0, int((pointage.heure_entree - planned_start).total_seconds() / 60))
-    early_minutes = max(0, int((planned_end - pointage.heure_sortie).total_seconds() / 60))
-    pointage.statut = statut
+    if pointage.shift:
+        planned_start, planned_end = planned_window_for_pointage(pointage, param)
+        start_limit = planned_start + timezone.timedelta(minutes=param.tolerance_retard_minutes)
+        expected_hours = max(0, (planned_end - planned_start).total_seconds() / 3600 - (pointage.shift.pause_minutes / 60))
+        statut = "present"
+        if pointage.heure_entree > start_limit:
+            points -= param.penalite_retard
+            statut = "retard"
+        if pointage.heure_sortie < planned_end:
+            points -= param.penalite_sortie_anticipee
+            statut = "sortie_anticipee" if statut == "present" else statut
+        elif float(pointage.total_heures or 0) > expected_hours:
+            points += param.bonus_heures_supplementaires
+        missing_hours = max(0, round(expected_hours - float(pointage.total_heures or 0), 2))
+        late_minutes = max(0, int((pointage.heure_entree - planned_start).total_seconds() / 60))
+        early_minutes = max(0, int((planned_end - pointage.heure_sortie).total_seconds() / 60))
+        pointage.statut = statut
+        pointage.commentaire = (
+            f"Planning: {planned_start.strftime('%H:%M')}-{planned_end.strftime('%H:%M')}; "
+            f"retard {late_minutes} min; sortie anticipee {early_minutes} min; "
+            f"heures manquantes {missing_hours:.2f}."
+        )
+    else:
+        pointage.statut = "present"
+        pointage.commentaire = "Pointage libre sans shift planifie; heures calculees selon entree/sortie reelles."
     pointage.points_calcules = points
-    pointage.commentaire = (
-        f"Planning: {planned_start.strftime('%H:%M')}-{planned_end.strftime('%H:%M')}; "
-        f"retard {late_minutes} min; sortie anticipee {early_minutes} min; "
-        f"heures manquantes {missing_hours:.2f}."
-    )
     pointage.full_clean()
     pointage.save()
     if pointage.shift and pointage.shift.plan_type == "normal" and pointage.shift.statut == "publie" and pointage.shift.date_fin and pointage.heure_sortie >= pointage.shift.date_fin:

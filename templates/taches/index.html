@@ -46,7 +46,54 @@
     <div class="metric-tile tile-yellow"><span>Utilises</span><strong>{{ points_used }}</strong><small>ce mois</small></div>
     <div class="metric-tile tile-lime"><span>Restants</span><strong>{{ points_remaining }}</strong><small>max {{ task_point_max }} / tache</small></div>
 </div>
-<div class="panel"><div class="empty-state">Les points sont attribues au moment de l'approbation d'une tache soumise.</div></div>
+<div class="panel">
+    <div class="panel-header">
+        <h3>Historique des points attribués</h3>
+    </div>
+    {% if points_history %}
+    <div class="table-responsive">
+        <table class="table mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th>Employé</th>
+                    <th>Points</th>
+                    <th>Description</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tx in points_history %}
+                <tr>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            {% if tx.employe.photo %}
+                                <img src="{{ tx.employe.photo.url }}" class="rounded-circle object-fit-cover" width="32" height="32" alt="Photo">
+                            {% else %}
+                                <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center fw-bold" style="width: 32px; height: 32px; font-size: 0.8rem;">
+                                    {{ tx.employe.prenom|first }}{{ tx.employe.nom|first }}
+                                </div>
+                            {% endif %}
+                            <div>
+                                <span class="fw-bold d-block">{{ tx.employe.nom_complet }}</span>
+                                <small class="text-soft">{{ tx.employe.poste.libelle|default:"" }}</small>
+                            </div>
+                        </div>
+                    </td>
+                    <td><span class="badge bg-success">+{{ tx.points }} pts</span></td>
+                    <td><span class="text-truncate d-inline-block" style="max-width: 250px;" title="{{ tx.description }}">{{ tx.description }}</span></td>
+                    <td class="text-soft"><small>{{ tx.date_transaction|date:"d M Y, H:i" }}</small></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="mb-2"><i class="bi bi-star text-soft fs-1"></i></div>
+        Les points sont attribués au moment de l'approbation d'une tâche soumise. Aucun historique récent.
+    </div>
+    {% endif %}
+</div>
 {% else %}
 <div class="panel"><div class="panel-header"><h3>Archive</h3></div>{% include "taches/task_cards.html" with tasks=archive empty="Aucune tache archivee." %}</div>
 {% endif %}

@@ -615,7 +615,7 @@ class TacheEquipe(models.Model):
             raise ValidationError({"date_fin": "La date de fin doit etre apres le debut."})
         if self.date_limite and not self.pk and self.statut not in {"terminee", "annulee"} and self.date_limite < timezone.now():
             raise ValidationError({"date_limite": "La date limite ne peut pas etre dans le passe."})
-        if self.date_limite and self.date_limite < self.date_creation:
+        if not self.pk and self.date_limite and self.date_limite < self.date_creation:
             raise ValidationError({"date_limite": "La date limite ne peut pas etre avant la creation."})
         if self.mode_affectation == "direct" and not self.employe:
             raise ValidationError({"employe": "Choisissez un employe ou utilisez une tache ouverte."})

@@ -41,13 +41,11 @@
             </p>
         </div>
         <div class="hero-actions">
-            {% if not today and active_shift_now %}
+            {% if not today %}
                 <form method="post" action="{% url 'attendance_checkin' %}" class="d-inline">
                     {% csrf_token %}
                     <button class="btn btn-rh-primary"><i class="bi bi-box-arrow-in-right"></i> Pointer l'entree</button>
                 </form>
-            {% elif not today %}
-                <button class="btn btn-rh-primary" disabled><i class="bi bi-box-arrow-in-right"></i> Aucun shift actif</button>
             {% endif %}
             {% if has_open_pointage %}
                 <form method="post" action="{% url 'attendance_checkout' %}" class="d-inline">

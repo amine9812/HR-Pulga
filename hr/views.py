@@ -1736,6 +1736,7 @@ def team_tasks(request):
             "points_used": points_used,
             "points_remaining": max(MANAGER_MONTHLY_TASK_POINTS - points_used, 0),
             "task_point_max": TASK_POINT_MAX,
+            "points_history": TransactionPoints.objects.filter(cree_par=user_profile, type_transaction="gain", source="tache").order_by("-date_transaction") if can_manage else None,
         },
     )
 
@@ -2253,7 +2254,7 @@ def rh_conversation_detail(request, pk):
         if form.is_valid():
             try:
                 with transaction.atomic():
-                    conv = get_object_or_404(conversations_for_profile(user_profile).select_for_update(), pk=pk)
+                    conv = get_object_or_404(conversations_for_profile(user_profile).select_related(None).select_for_update(), pk=pk)
                     if conv.statut == "cloturee":
                         raise ValidationError("Ce ticket est cloture: aucune nouvelle reponse ne peut etre ajoutee.")
                     if user_profile.role == Role.RESPONSABLE_RH and conv.responsable_rh_id and conv.responsable_rh_id != user_profile.id:
@@ -2299,7 +2300,7 @@ def rh_conversation_close(request, pk):
     form = ConversationRHCloseForm(request.POST)
     try:
         with transaction.atomic():
-            conv = get_object_or_404(conversations_for_profile(user_profile).select_for_update(), pk=pk)
+            conv = get_object_or_404(conversations_for_profile(user_profile).select_related(None).select_for_update(), pk=pk)
             if conv.statut == "cloturee":
                 messages.info(request, "Ce ticket est deja cloture.")
                 return redirect("rh_conversation_detail", pk=pk)
@@ -2348,7 +2349,7 @@ def rh_conversation_accept(request, pk):
     user_profile = profile(request)
     try:
         with transaction.atomic():
-            conv = get_object_or_404(conversations_for_profile(user_profile).select_for_update(), pk=pk)
+            conv = get_object_or_404(conversations_for_profile(user_profile).select_related(None).select_for_update(), pk=pk)
             if conv.statut == "cloturee":
                 raise ValidationError("Ce ticket est deja cloture.")
             if conv.responsable_rh_id and conv.responsable_rh_id != user_profile.id:

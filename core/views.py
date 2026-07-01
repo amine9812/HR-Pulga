@@ -2,6 +2,7 @@ from datetime import timedelta
 
 import csv
 import json
+import logging
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -21,6 +22,9 @@ from accounts.services import AccountRequestService
 from .ai_assistant import assistant_response
 
 from django.db import connection
+
+logger = logging.getLogger(__name__)
+
 
 def health_check(request):
     try:
@@ -902,4 +906,5 @@ def chatbot_api(request):
         message = " ".join(exc.messages) if hasattr(exc, "messages") else str(exc)
         return JsonResponse({"ok": False, "message": message}, status=400)
     except Exception:
+        logger.exception("Chatbot API failed")
         return JsonResponse({"ok": False, "message": "Je ne peux pas joindre le service assistant pour le moment. Veuillez reessayer."}, status=500)
